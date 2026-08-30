@@ -51,5 +51,27 @@ class StartAndDecomposeTest(unittest.TestCase):
             self.assertIn(s, self.text)
 
 
+class StorageTest(unittest.TestCase):
+    text = property(lambda self: read("references/storage-questions-first.md"))
+
+    def test_sections(self):
+        for h in ("## 질문 먼저", "## 구조 도출", "## Worked Example 한 줄", "## 접근 규칙을 쉬운 말로",
+                  "## SQL과 access-rules.json 같이 만들기", "## 손 넘기기: 저장소 계정 → SQL → 주소·공개키",
+                  "## 설정 두 줄 같이 보기"):
+            self.assertIn(h, self.text)
+
+    def test_questions_before_tables(self):
+        self.assertLess(self.text.index("## 질문 먼저"), self.text.index("## 구조 도출"))
+
+    def test_plain_words_rule_and_config_lines(self):
+        self.assertIn("누구나 적을 수 있고, 보는 건 당신뿐", self.text)
+        self.assertIn("SUPABASE_URL", self.text)
+        self.assertIn("SUPABASE_ANON_KEY", self.text)
+
+    def test_sql_failure_path(self):
+        self.assertIn("빨간 글자", self.text)
+        self.assertIn("두 번 실패하면", self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
