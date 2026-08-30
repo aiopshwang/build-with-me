@@ -123,6 +123,9 @@ def run_one(args: argparse.Namespace, rep: int) -> dict:
     persona = EVALS / "personas" / f"{args.persona}.md"
     rep_dir = args.output / args.scenario / args.persona / args.arm / f"rep-{rep}"
     workspace = rep_dir / "workspace"
+    if workspace.exists():
+        print(f"output already has {workspace}; delete it or choose another --output")
+        sys.exit(2)
     workspace.mkdir(parents=True, exist_ok=False)
     env = dict(os.environ, BWM_NO_OPEN="1")
     history: list[tuple[str, str]] = []
@@ -153,8 +156,9 @@ def run_one(args: argparse.Namespace, rep: int) -> dict:
                 break
     finally:
         stop_preview(workspace)
-    (rep_dir / "transcript-agent.jsonl").write_text(
-        "\n".join(s if s.endswith("\n") else s + "\n" for s in stream_all), encoding="utf-8")
+        # Written here so a crash or a Ctrl-C mid-run still leaves the turns we did get.
+        (rep_dir / "transcript-agent.jsonl").write_text(
+            "\n".join(s if s.endswith("\n") else s + "\n" for s in stream_all), encoding="utf-8")
     record = {"scenario": args.scenario, "persona": args.persona, "arm": args.arm, "rep": rep,
               "turns": len(history), "skill_invoked": invoked if args.arm == "candidate" else False,
               "storage": meta.get("storage", "none")}

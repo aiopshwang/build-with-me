@@ -27,6 +27,10 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote
 
+if hasattr(sys.stdout, "reconfigure"):
+    # Korean file names appear in the messages; a cp949 console would fail on them.
+    sys.stdout.reconfigure(encoding="utf-8")
+
 ROOT = Path(__file__).resolve().parents[1]
 SKIP_DIRS = {".git", ".superpowers", "node_modules", "__pycache__", ".pytest_cache"}
 MANIFESTS = (

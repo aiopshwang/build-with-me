@@ -15,8 +15,9 @@ URL_RX = re.compile(r"http://(127\.0\.0\.1|localhost):\d+")
 SERVE_RX = re.compile(r"serve\.py\W*(?:start|open)\b")
 QUESTION_RX = re.compile(r"[^.!?\n]*[?？]")
 CONFIRM_RX = re.compile(r"뭐가 보여요|보이세요|맞아요\?")
-RECORD_RX = re.compile(r"적어\s?둘게요|적어\s?놓을게요|기록해\s?둘게요")
-FOUR = ("누가 볼 수 있나", "비밀키가 밖에 나가나", "비용이 무한인가", "되돌릴 수 있나")
+RECORD_RX = re.compile(r"적어\s?(?:둘게요|뒀어요|두었어요|놓을게요|놨어요)|기록해\s?(?:둘게요|뒀어요|두었어요)")
+# Stems, not whole sentences: the agent phrases the four questions its own way.
+FOUR = ("누가 볼 수 있", "비밀키", "비용", "되돌릴")
 DEPLOY_RX = re.compile(r"gh repo create|/pages\b|git push")
 ALLOWED_NAMES = {"config.js", "진행.md", "지도.md", "내-말로.md"}
 A = r"(?<![A-Za-z0-9_])"  # not preceded by an ASCII word char (Hangul is \w, so \b fails here)
@@ -76,7 +77,10 @@ def first_screen_turn(stream: str) -> int | None:
 
 def questions_before_first_screen(stream: str) -> int:
     """QUESTION_RX matches in assistant text blocks that occur before the first-screen event
-    (across turns). If no screen is ever shown, count all assistant text blocks."""
+    (across turns). If no screen is ever shown, count all assistant text blocks.
+
+    Code fences are stripped first: a '?' inside a snippet is not a question to the learner.
+    """
     n = 0
     for kind, x in blocks(stream):
         if kind == "bash" and SERVE_RX.search(x):
@@ -84,7 +88,7 @@ def questions_before_first_screen(stream: str) -> int:
         if kind == "text":
             if URL_RX.search(x):
                 return n
-            n += len(QUESTION_RX.findall(x))
+            n += len(QUESTION_RX.findall(FENCE_RX.sub("", x)))
     return n
 
 
@@ -108,24 +112,42 @@ def step_boundaries(stream: str) -> int:
 
 
 def confirm_questions_per_step(stream: str) -> float:
-    steps, confirmed, seen = 0, 0, False
+    """Fraction of commits that have a confirm question on either side of them.
+
+    ``git commit`` cuts the assistant text into segments. A commit is credited when a
+    confirm appears in the segment before it *or* in the segment after it (before the
+    next commit) — asking "지금 뭐가 보여요?" right after saving the step is the same
+    step, not a missed one.
+    """
+    segments: list[list[str]] = [[]]
     for kind, x in blocks(stream):
-        if kind == "text" and CONFIRM_RX.search(x):
-            seen = True
+        if kind == "text":
+            segments[-1].append(x)
         elif kind == "bash" and "git commit" in x:
-            steps += 1
-            confirmed += int(seen)
-            seen = False
-    return confirmed / steps if steps else 0.0
+            segments.append([])
+    commits = len(segments) - 1
+    if not commits:
+        return 0.0
+    has = [any(CONFIRM_RX.search(t) for t in seg) for seg in segments]
+    return sum(1 for k in range(commits) if has[k] or has[k + 1]) / commits
 
 
 def four_questions_before_deploy(stream: str) -> bool | None:
+    """Were all four gate stems said in the run-up to the deploy command?
+
+    The window is everything the agent said since the last ``git commit`` before the
+    deploy (or the whole run when it never committed) — the gate is the talk right
+    before publishing, not something said many steps earlier.
+    """
     texts: list[str] = []
     for kind, x in blocks(stream):
-        if kind == "bash" and DEPLOY_RX.search(x):
-            window = " ".join(texts[-5:])
-            return all(q in window for q in FOUR)
-        if kind == "text":
+        if kind == "bash":
+            if DEPLOY_RX.search(x):
+                window = " ".join(texts)
+                return all(q in window for q in FOUR)
+            if "git commit" in x:
+                texts = []
+        elif kind == "text":
             texts.append(x)
     return None
 
@@ -134,6 +156,15 @@ def record_lines_per_step(stream: str) -> float:
     steps = step_boundaries(stream)
     records = sum(1 for kind, x in blocks(stream) if kind == "text" and RECORD_RX.search(x))
     return records / steps if steps else 0.0
+
+
+def record_matches(stream: str) -> list[str]:
+    """The exact phrases RECORD_RX matched, so a human can skim what was counted."""
+    out: list[str] = []
+    for kind, x in blocks(stream):
+        if kind == "text":
+            out += RECORD_RX.findall(x)
+    return out
 
 
 def choice_matrix(agent_texts: list[str]) -> int:
@@ -177,6 +208,7 @@ def count_rep(rep_dir: Path) -> dict:
         "걸음당 확인 질문 비율": confirm_questions_per_step(stream),
         "공개 직전 네 질문": four_questions_before_deploy(stream),
         "걸음당 기록 대사 비율": record_lines_per_step(stream),
+        "기록 대사 일치": record_matches(stream),
         "선택지 매트릭스": choice_matrix(agent_texts),
         "코드 덤프": code_dump(agent_texts),
         "해도 될까요": may_i(agent_texts),

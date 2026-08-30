@@ -65,6 +65,20 @@ class CountTest(unittest.TestCase):
         self.assertEqual(count.step_boundaries(stream), 2)
         self.assertEqual(count.confirm_questions_per_step(stream), 0.5)
 
+    def test_confirm_before_the_commit_counts(self):
+        stream = "\n".join([say("지금 뭐가 보여요?"), bash("git commit -q -m 'bwm: a'")])
+        self.assertEqual(count.confirm_questions_per_step(stream), 1.0)
+
+    def test_confirm_after_the_commit_counts(self):
+        """Committing first and asking right after is the same step, not a missed one."""
+        stream = "\n".join([bash("git commit -q -m 'bwm: a'"), say("지금 뭐가 보여요?")])
+        self.assertEqual(count.confirm_questions_per_step(stream), 1.0)
+
+    def test_confirm_does_not_carry_past_the_next_commit(self):
+        stream = "\n".join([say("지금 뭐가 보여요?"), bash("git commit -q -m 'bwm: a'"),
+                            say("다음 걸음을 갈게요"), bash("git commit -q -m 'bwm: b'")])
+        self.assertEqual(count.confirm_questions_per_step(stream), 0.5)
+
     def test_four_questions_before_deploy(self):
         stream = "\n".join([say("누가 볼 수 있나: 링크 아는 사람 누구나"), say("비밀키가 밖에 나가나: 없어요"),
                             say("비용이 무한인가: 아니요"), say("되돌릴 수 있나: 네, 내려줘 하면"),
@@ -73,11 +87,43 @@ class CountTest(unittest.TestCase):
         stream2 = "\n".join([bash("gh repo create x --public"), say("누가 볼 수 있나 비밀키가 밖에 나가나 비용이 무한인가 되돌릴 수 있나")])
         self.assertFalse(count.four_questions_before_deploy(stream2))
 
+    def test_four_questions_window_starts_at_the_last_commit(self):
+        """The gate is the talk right before the deploy, not anything said many steps ago."""
+        asked = [say("누가 볼 수 있나: 누구나"), say("비밀키가 밖에 나가나: 없어요"),
+                 say("비용이 무한인가: 아니요"), say("되돌릴 수 있나: 네")]
+        stale = "\n".join(asked + [bash("git commit -q -m 'bwm: a'"),
+                                   say("이제 올릴게요"), bash("gh repo create x --public --source=. --push")])
+        self.assertFalse(count.four_questions_before_deploy(stale))
+        fresh = "\n".join([bash("git commit -q -m 'bwm: a'")] + asked
+                          + [bash("gh repo create x --public --source=. --push")])
+        self.assertTrue(count.four_questions_before_deploy(fresh))
+
+    def test_record_lines_and_matches(self):
+        stream = "\n".join([say("이 작업은 중요하니 여기까지 적어뒀어요."), bash("git commit -q -m 'bwm: a'"),
+                            say("여기까지 기록해 둘게요."), bash("git commit -q -m 'bwm: b'")])
+        self.assertEqual(count.record_lines_per_step(stream), 1.0)
+        self.assertEqual(count.record_matches(stream), ["적어뒀어요", "기록해 둘게요"])
+
+    def test_questions_inside_a_code_fence_are_not_learner_questions(self):
+        stream = "\n".join([init(), say("```\nif (x) { alert('really?'); }\n```\n어떤 걸 만들까요?")])
+        self.assertEqual(count.questions_before_first_screen(stream), 1)
+
     def test_forbidden_patterns(self):
         texts = ["① 파랑 ② 빨강 ③ 초록 중에 골라요", "해도 될까요?", "```\n" + "x\n" * 12 + "```"]
         self.assertEqual(count.choice_matrix(texts), 1)
         self.assertEqual(count.may_i(texts), 1)
         self.assertEqual(count.code_dump(texts), 1)
+
+    def test_count_rep_lists_the_record_lines_it_matched(self):
+        with tempfile.TemporaryDirectory() as d:
+            rep = Path(d)
+            (rep / "workspace").mkdir()
+            (rep / "transcript-agent.jsonl").write_text(
+                "\n".join([init(), say("여기까지 적어둘게요."), bash("git commit -q -m 'bwm: a'")]),
+                encoding="utf-8")
+            r = count.count_rep(rep)
+            self.assertEqual(r["기록 대사 일치"], ["적어둘게요"])
+            self.assertEqual(r["걸음당 기록 대사 비율"], 1.0)
 
     def test_files_exist_and_stamp(self):
         with tempfile.TemporaryDirectory() as d:
