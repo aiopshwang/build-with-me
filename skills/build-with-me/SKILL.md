@@ -20,6 +20,8 @@ metadata:
 | 링크를 만들기 직전, 재배포, 내리기 | [publish-safety-gate.md](references/publish-safety-gate.md) |
 | 걸음 끝, 새 세션, 맥락 정리 직후, "안 돼요" | [carry-on.md](references/carry-on.md) |
 
+스크립트(`serve.py`, `guard.py`, 파이썬이 없으면 `serve.ps1`)는 이 스킬 폴더의 `scripts/`에 있다. 항상 그 경로로 실행한다.
+
 ## 불변식 5
 
 1. **쉬운 말.** 설명에 파일명·함수명·라이브러리명이 없다. 예외는 설정 두 줄과 접근 규칙뿐이며 보여주고 한 줄 확인한다.

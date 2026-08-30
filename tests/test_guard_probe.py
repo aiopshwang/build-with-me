@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "skills/build-with-me/scripts"))
 import guard  # noqa: E402
 
 RULES = {"version": 1, "tables": {"responses": {

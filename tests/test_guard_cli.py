@@ -17,7 +17,7 @@ class GuardCLITest(unittest.TestCase):
         """Run guard.py with the given arguments, return (returncode, stdout, stderr)."""
         env = dict(os.environ, PYTHONIOENCODING="utf-8")
         result = subprocess.run(
-            [sys.executable, "scripts/guard.py", *args],
+            [sys.executable, "skills/build-with-me/scripts/guard.py", *args],
             capture_output=True,
             text=True,
             encoding="utf-8",

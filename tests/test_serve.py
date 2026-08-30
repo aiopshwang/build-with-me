@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "skills/build-with-me/scripts"))
 import serve  # noqa: E402
 
 
@@ -42,7 +42,7 @@ class StartStopTest(unittest.TestCase):
     def test_start_serves_and_stop_kills(self):
         with tempfile.TemporaryDirectory() as d:
             Path(d, "index.html").write_text("<h1>재고표</h1>", encoding="utf-8")
-            out = subprocess.run([sys.executable, str(REPO_ROOT / "scripts/serve.py"), "start", d],
+            out = subprocess.run([sys.executable, str(REPO_ROOT / "skills/build-with-me/scripts/serve.py"), "start", d],
                                  capture_output=True, text=True, encoding="utf-8", check=True).stdout
             url = out.split()[1]
             for _ in range(20):
@@ -53,7 +53,7 @@ class StartStopTest(unittest.TestCase):
             self.assertIn("재고표", body)
             state = json.loads(Path(d, ".bwm/serve.json").read_text(encoding="utf-8"))
             self.assertEqual(url, f"http://127.0.0.1:{state['port']}/")
-            out = subprocess.run([sys.executable, str(REPO_ROOT / "scripts/serve.py"), "stop", d],
+            out = subprocess.run([sys.executable, str(REPO_ROOT / "skills/build-with-me/scripts/serve.py"), "stop", d],
                                  capture_output=True, text=True, encoding="utf-8").stdout
             self.assertIn("STOPPED", out)
             time.sleep(0.5)
@@ -65,7 +65,7 @@ class StartStopTest(unittest.TestCase):
             state = Path(d, ".bwm"); state.mkdir()
             # a PID that does not exist: stop must still parse the file and remove it
             (state / "serve.json").write_text(json.dumps({"port": 1, "pid": 999999}), encoding="utf-8-sig")
-            out = subprocess.run([sys.executable, str(REPO_ROOT / "scripts/serve.py"), "stop", d],
+            out = subprocess.run([sys.executable, str(REPO_ROOT / "skills/build-with-me/scripts/serve.py"), "stop", d],
                                  capture_output=True, text=True, encoding="utf-8").stdout
             self.assertIn("STOPPED", out)
             self.assertFalse((state / "serve.json").exists())
