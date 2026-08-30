@@ -1,0 +1,9 @@
+-- {{table}}: 누구나 적을 수 있고, 보는 것과 지우는 것은 당신(대시보드)뿐
+create table if not exists public.{{table}} (
+  id bigint generated always as identity primary key,
+  created_at timestamptz not null default now(),
+  {{columns}}
+);
+alter table public.{{table}} enable row level security;
+create policy "anyone can insert" on public.{{table}} for insert to anon with check (true);
+-- select/delete 정책 없음 = anon은 볼 수도 지울 수도 없음
