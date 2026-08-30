@@ -141,5 +141,20 @@ class SkillStructureTest(unittest.TestCase):
         self.assertIn("## 하지 않는 것", self.text)
 
 
+class StartPaperTest(unittest.TestCase):
+    text = property(lambda self: (SKILL.parents[1] / "시작하기.md").read_text(encoding="utf-8"))
+
+    def test_order(self):
+        t = self.text
+        marks = ["폴더", "npx skills add aiopshwang/build-with-me", "이렇게 나오면 된 거예요", "코딩은 몰라요",
+                 "재고표", "강사", "업데이트"]
+        idx = [t.index(m) for m in marks]
+        self.assertEqual(idx, sorted(idx))
+
+    def test_five_examples(self):
+        for s in ("우리 가게 지도", "재고표", "설문 페이지", "예약 신청", "견적 계산기"):
+            self.assertIn(s, self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
