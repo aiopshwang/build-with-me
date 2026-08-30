@@ -73,5 +73,29 @@ class StorageTest(unittest.TestCase):
         self.assertIn("두 번 실패하면", self.text)
 
 
+class PublishGateTest(unittest.TestCase):
+    text = property(lambda self: read("references/publish-safety-gate.md"))
+
+    def test_sections(self):
+        for h in ("## 순서", "## 손 넘기기 세 번", "## 네 질문", "## 배포 한 줄", "## 배포 실패 경로",
+                  "## 재배포 한 줄", "## 내리는 법", "## (선택) 한 번 더 보기"):
+            self.assertIn(h, self.text)
+
+    def test_gate_precedes_deploy(self):
+        t = self.text
+        self.assertLess(t.index("## 네 질문"), t.index("## 배포 한 줄"))
+        self.assertIn("호스팅 계정 → 네 질문 → 배포 → 링크", t)
+
+    def test_four_questions(self):
+        for q in ("누가 볼 수 있나", "비밀키가 밖에 나가나", "비용이 무한인가", "되돌릴 수 있나"):
+            self.assertIn(q, self.text)
+
+    def test_measured_facts(self):
+        self.assertIn("delete_repo", self.text)
+        self.assertIn("3분", self.text)
+        self.assertIn("Name already exists", self.text)
+        self.assertIn("Bad credentials", self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
