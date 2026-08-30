@@ -137,26 +137,39 @@ def confirm_questions_per_step(stream: str) -> float:
     return sum(1 for k in range(commits) if has[k] or has[k + 1]) / commits
 
 
+def _deploy_window(stream: str) -> str | None:
+    """The assistant text window that leads up to the deploy command.
+
+    Turns are delimited by ``("init", "")`` events from ``blocks()``. The window is the
+    previous turn's assistant text plus the current turn's assistant text so far (current
+    only, if there is no previous turn) — the gate is the talk right before publishing,
+    which may span a ``git commit`` (ignored here) but not reach back further than the
+    turn before the deploy. Returns None if no deploy command is found.
+    """
+    turns: list[list[str]] = []
+    current: list[str] = []
+    for kind, x in blocks(stream):
+        if kind == "init":
+            turns.append(current)
+            current = []
+        elif kind == "bash":
+            if DEPLOY_RX.search(x):
+                previous = turns[-1] if turns else []
+                return " ".join(previous + current)
+        elif kind == "text":
+            current.append(x)
+    return None
+
+
 def four_questions_before_deploy(stream: str) -> bool | None:
     """Were all four gate stems said in the run-up to the deploy command?
 
-    The window is everything the agent said since the last ``git commit`` before the
-    deploy (or the whole run when it never committed) — the gate is the talk right
-    before publishing, not something said many steps earlier.
-
     Uses regex matching to accept paraphrased versions of the questions.
     """
-    texts: list[str] = []
-    for kind, x in blocks(stream):
-        if kind == "bash":
-            if DEPLOY_RX.search(x):
-                window = " ".join(texts)
-                return all(rx.search(window) for rx in FOUR_RX)
-            if "git commit" in x:
-                texts = []
-        elif kind == "text":
-            texts.append(x)
-    return None
+    window = _deploy_window(stream)
+    if window is None:
+        return None
+    return all(rx.search(window) for rx in FOUR_RX)
 
 
 def four_questions_matches(stream: str) -> list[str | None]:
@@ -165,21 +178,14 @@ def four_questions_matches(stream: str) -> list[str | None]:
     Returns a list of 4 elements (one per FOUR_RX), each being the first matched string or None.
     Returns [None] * 4 if no deploy command is found.
     """
-    texts: list[str] = []
-    for kind, x in blocks(stream):
-        if kind == "bash":
-            if DEPLOY_RX.search(x):
-                window = " ".join(texts)
-                matches = []
-                for rx in FOUR_RX:
-                    m = rx.search(window)
-                    matches.append(m.group() if m else None)
-                return matches
-            if "git commit" in x:
-                texts = []
-        elif kind == "text":
-            texts.append(x)
-    return [None] * 4
+    window = _deploy_window(stream)
+    if window is None:
+        return [None] * 4
+    matches = []
+    for rx in FOUR_RX:
+        m = rx.search(window)
+        matches.append(m.group() if m else None)
+    return matches
 
 
 def record_lines_per_step(stream: str) -> float:

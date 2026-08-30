@@ -115,15 +115,40 @@ class CountTest(unittest.TestCase):
         self.assertFalse(count.four_questions_before_deploy(stream))
 
     def test_four_questions_window_starts_at_the_last_commit(self):
-        """The gate is the talk right before the deploy, not anything said many steps ago."""
+        """The gate is the talk in the previous turn, not anything said many turns ago."""
         asked = [say("누가 볼 수 있나: 누구나"), say("비밀키가 밖에 나가나: 없어요"),
                  say("비용이 무한인가: 아니요"), say("되돌릴 수 있나: 네")]
-        stale = "\n".join(asked + [bash("git commit -q -m 'bwm: a'"),
-                                   say("이제 올릴게요"), bash("gh repo create x --public --source=. --push")])
+        stale = "\n".join(asked + [init(), say("이제 올릴게요"), init(),
+                                   bash("gh repo create x --public --source=. --push")])
         self.assertFalse(count.four_questions_before_deploy(stale))
-        fresh = "\n".join([bash("git commit -q -m 'bwm: a'")] + asked
-                          + [bash("gh repo create x --public --source=. --push")])
+        fresh = "\n".join([init()] + asked
+                          + [init(), bash("gh repo create x --public --source=. --push")])
         self.assertTrue(count.four_questions_before_deploy(fresh))
+
+    def test_four_questions_survive_a_commit_before_deploy(self):
+        """A ``git commit`` between the questions and the deploy does not empty the window."""
+        stream = "\n".join([
+            init(),
+            say("① 누가 볼 수 있나 — 누구나요 ② 비밀번호 같은 게 올라가나 — 없어요 "
+                "③ 돈이 나가나 — 무료예요 ④ 내릴 수 있나 — 내려줘 하면 돼요"),
+            init(),
+            bash("git add -A && git commit -q -m 'bwm: 공개 준비'"),
+            bash("gh repo create x --public --source=. --push"),
+        ])
+        self.assertTrue(count.four_questions_before_deploy(stream))
+
+    def test_four_questions_two_turns_back_is_too_old(self):
+        """Questions asked two turns before the deploy are outside the window."""
+        stream = "\n".join([
+            init(),
+            say("① 누가 볼 수 있나 — 누구나요 ② 비밀번호 같은 게 올라가나 — 없어요 "
+                "③ 돈이 나가나 — 무료예요 ④ 내릴 수 있나 — 내려줘 하면 돼요"),
+            init(),
+            say("다음 걸음"),
+            init(),
+            bash("gh repo create x --public --source=. --push"),
+        ])
+        self.assertFalse(count.four_questions_before_deploy(stream))
 
     def test_record_lines_and_matches(self):
         stream = "\n".join([say("이 작업은 중요하니 여기까지 적어뒀어요."), bash("git commit -q -m 'bwm: a'"),
