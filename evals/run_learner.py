@@ -192,11 +192,26 @@ def agent_argv(*, host: str, arm: str, model: str, resume: str | None, workspace
         # run_proc() sets the subprocess cwd to workspace on every turn anyway. Both the
         # first turn and resume need --skip-git-repo-check, confirmed by spike (resume
         # without it fails with "Not inside a trusted directory").
+        #
+        # `codex exec resume` also has no `-s`/`--sandbox` flag at all (confirmed live:
+        # "error: unexpected argument '-s' found" — it's simply absent from `codex exec
+        # resume --help`, unlike `codex exec --help`). `--dangerously-bypass-approvals-
+        # and-sandbox` IS present on both subcommands and is exactly what
+        # `-s danger-full-access` means (no sandbox, no approval prompts), so it's used
+        # uniformly on both turns instead of `-s` for that one sandbox value. A non-
+        # danger-full-access sandbox can only be set on the first turn (resume has no way
+        # to express it), which is fine since --sandbox defaults to danger-full-access.
+        if sandbox == "danger-full-access":
+            sandbox_flags = ["--dangerously-bypass-approvals-and-sandbox"]
+        elif resume:
+            sandbox_flags = []  # can't be set on resume; falls back to codex's own default
+        else:
+            sandbox_flags = ["-s", sandbox]
         if resume:
             return ["codex", "exec", "resume", "--last", "--json", "--skip-git-repo-check",
-                    "-s", sandbox, msg]
+                    *sandbox_flags, msg]
         return ["codex", "exec", "--json", "--skip-git-repo-check", "-C", str(workspace),
-                "-s", sandbox, msg]
+                *sandbox_flags, msg]
     argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--setting-sources", "",
             "--strict-mcp-config", "--permission-mode", "bypassPermissions", "--model", model,
             "--tools", AGENT_TOOLS]

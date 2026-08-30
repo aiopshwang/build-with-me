@@ -113,16 +113,28 @@ class ParseTest(unittest.TestCase):
         self.assertFalse(run_learner.skill_invoked_codex(json.dumps(ev)))
 
     def test_agent_argv_codex_first_turn(self):
+        # `codex exec resume` has no `-s`/`--sandbox` flag at all (confirmed live:
+        # "error: unexpected argument '-s' found"), so danger-full-access is expressed
+        # with --dangerously-bypass-approvals-and-sandbox instead, on both turns.
         argv = run_learner.agent_argv(host="codex", arm="candidate", model="sonnet", resume=None,
                                        workspace=Path("/tmp/ws"), sandbox="danger-full-access", msg="안녕")
         self.assertEqual(argv, ["codex", "exec", "--json", "--skip-git-repo-check", "-C",
-                                str(Path("/tmp/ws")), "-s", "danger-full-access", "안녕"])
+                                str(Path("/tmp/ws")), "--dangerously-bypass-approvals-and-sandbox", "안녕"])
 
     def test_agent_argv_codex_resume_turn(self):
         argv = run_learner.agent_argv(host="codex", arm="candidate", model="sonnet", resume="01a051e5",
                                        workspace=Path("/tmp/ws"), sandbox="danger-full-access", msg="다음")
         self.assertEqual(argv, ["codex", "exec", "resume", "--last", "--json", "--skip-git-repo-check",
-                                "-s", "danger-full-access", "다음"])
+                                "--dangerously-bypass-approvals-and-sandbox", "다음"])
+
+    def test_agent_argv_codex_resume_cannot_pass_sandbox_flag(self):
+        # `codex exec resume` has no `-s`/`--sandbox` flag, so a non-default sandbox mode
+        # can only be requested on the first turn; resume silently falls back to codex's
+        # own default rather than passing an argument the CLI would reject.
+        argv = run_learner.agent_argv(host="codex", arm="candidate", model="sonnet", resume="01a051e5",
+                                       workspace=Path("/tmp/ws"), sandbox="workspace-write", msg="다음")
+        self.assertNotIn("-s", argv)
+        self.assertNotIn("workspace-write", argv)
 
     def test_agent_argv_codex_ignores_plugin_dir(self):
         argv = run_learner.agent_argv(host="codex", arm="candidate", model="sonnet", resume=None,
