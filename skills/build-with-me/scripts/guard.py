@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -22,7 +23,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 ANON_KEY_FILE = "config.js"
-SKIP_DIRS = {".git", "node_modules", "archive", ".bwm", "__pycache__"}
+SKIP_DIRS = {".git", "node_modules", ".bwm", "__pycache__"}
 SCAN_SUFFIXES = {".html", ".js", ".css", ".json", ".md", ".txt", ".sql", ".env"}
 PATTERNS = {
     "openai": re.compile(r"sk-[A-Za-z0-9]{20,}"),
@@ -69,6 +70,13 @@ def _urllib_http(method: str, url: str, headers: dict[str, str], body: str | Non
 
 
 def probe(url: str, key: str, rules: dict[str, Any], http=None) -> list[ProbeResult]:
+    """Ask the real API what an anonymous visitor can do, with PostgREST semantics.
+
+    Under the insert-only policy of v0.1 the API cannot hand the inserted row back
+    (that would need a select policy), so insert is asked with ``return=minimal``
+    and the clean-up delete filters on every column of ``probe_row`` instead of an
+    id. A delete that touches nothing answers 2xx with an empty list — a *deny*.
+    """
     http = http or _urllib_http
     base = url.rstrip("/") + "/rest/v1/"
     headers = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json",
@@ -78,32 +86,42 @@ def probe(url: str, key: str, rules: dict[str, Any], http=None) -> list[ProbeRes
         want = {a: ("allow" if spec["anon"].get(a) else "deny") for a in ("insert", "select", "delete")}
         row = spec.get("probe_row", {})
         observed: dict[str, str] = {}
-        inserted_id = None
-        status, text = http("POST", base + table, headers, json.dumps(row, ensure_ascii=False))
+
+        status, _ = http("POST", base + table, dict(headers, Prefer="return=minimal"),
+                         json.dumps(row, ensure_ascii=False))
         observed["insert"] = "allow" if status in (200, 201) else "deny"
-        if observed["insert"] == "allow":
-            try:
-                inserted_id = json.loads(text)[0].get("id")
-            except (ValueError, IndexError, AttributeError):
-                inserted_id = None
+
         status, text = http("GET", base + f"{table}?select=*&limit=5", headers, None)
         try:
             rows = json.loads(text) if status == 200 else []
         except ValueError:
             rows = []
         observed["select"] = "allow" if rows else "deny"
-        if inserted_id is not None:
-            status, _ = http("DELETE", base + f"{table}?id=eq.{inserted_id}", headers, None)
-            observed["delete"] = "allow" if status in (200, 204) else "deny"
+
+        if observed["insert"] == "allow":
+            query = "&".join(f"{col}=eq.{urllib.parse.quote(str(val))}" for col, val in row.items())
+            status, text = http("DELETE", base + f"{table}?{query}", headers, None)
+            try:
+                deleted = json.loads(text) if text.strip() else []
+            except ValueError:
+                deleted = []
+            if status in (200, 204) and isinstance(deleted, list) and deleted:
+                observed["delete"] = "allow"
+            elif status in (401, 403) or status in (200, 204):
+                observed["delete"] = "deny"
+            else:
+                observed["delete"] = "unknown"
         else:
             observed["delete"] = "unknown"
+
         # Control: at least one action the rules allow must have been observed as allowed.
         control_ok = any(want[a] == "allow" and observed[a] == "allow" for a in want)
         for action in ("insert", "select", "delete"):
             obs = observed[action] if control_ok else "unknown"
             ok = control_ok and obs == want[action]
             note = "" if control_ok else "허용된 동작도 하나도 안 돼서, 막힌 건지 연결이 안 된 건지 알 수 없어요"
-            if control_ok and action == "delete" and inserted_id is not None and observed["delete"] == "deny":
+            if (control_ok and action == "delete" and observed["insert"] == "allow"
+                    and observed["delete"] != "allow"):
                 note = "확인용 줄 하나가 저장소에 남았어요 — 나중에 대시보드에서 지우면 돼요"
             results.append(ProbeResult(table, action, want[action], obs, ok, note))
     return results
@@ -113,15 +131,44 @@ def _mask(s: str) -> str:
     return s[:6] + "…" if len(s) > 6 else s
 
 
-def scan_dir(root: Path) -> list[Finding]:
+def _shipped_paths(root: Path) -> list[Path] | None:
+    """Exactly the files git would put in a public repo, or None when this is not a repo."""
+    out = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        capture_output=True, check=False)
+    if out.returncode != 0:
+        return None
+    names = [n for n in out.stdout.decode("utf-8", "replace").split("\0") if n]
+    return [root / n for n in names]
+
+
+def _walked_paths(root: Path) -> list[Path]:
+    return [p for p in root.rglob("*")
+            if p.is_file() and not any(part in SKIP_DIRS for part in p.relative_to(root).parts)]
+
+
+def _is_scannable(path: Path) -> bool:
+    """``.env`` has no suffix pathlib can see, so environment files are matched by name."""
+    if path.name == ".env" or path.name.startswith(".env."):
+        return True
+    return path.suffix.lower() in SCAN_SUFFIXES
+
+
+def scan_dir(root: Path, unreadable: list[str] | None = None) -> list[Finding]:
     findings: list[Finding] = []
-    for path in sorted(root.rglob("*")):
-        if not path.is_file() or path.suffix.lower() not in SCAN_SUFFIXES:
-            continue
-        if any(part in SKIP_DIRS for part in path.relative_to(root).parts):
+    paths = _shipped_paths(root)
+    if paths is None:
+        paths = _walked_paths(root)
+    for path in sorted(paths):
+        if not path.is_file() or not _is_scannable(path):
             continue
         anon_budget = 1 if path.name == ANON_KEY_FILE else 0
-        text = path.read_text(encoding="utf-8", errors="replace")
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            if unreadable is not None:
+                unreadable.append(str(path.relative_to(root)))
+            continue
         for lineno, line in enumerate(text.splitlines(), 1):
             for kind, rx in PATTERNS.items():
                 for m in rx.finditer(line):
@@ -179,7 +226,8 @@ def cmd_pre_share(args: argparse.Namespace) -> int:
     if not root.is_dir():
         print("확인할 폴더를 찾지 못했어요.")
         return 2
-    findings = scan_dir(root)
+    unreadable: list[str] = []
+    findings = scan_dir(root, unreadable=unreadable)
     if args.json:
         print(json.dumps([dataclasses.asdict(f) for f in findings], ensure_ascii=False))
     elif not findings:
@@ -189,15 +237,22 @@ def cmd_pre_share(args: argparse.Namespace) -> int:
         for f in findings:
             print(f"- {PLAIN[f.kind]}가 들어 있어요 (파일 {f.path}, {f.line}번째 줄, '{f.sample}')")
         print("이 줄들을 빼고 나서 다시 확인할게요.")
-    return 1 if findings else 0
+    for name in unreadable:
+        print(f"읽지 못한 파일이 있어요: {name}")
+    return 1 if (findings or unreadable) else 0
 
 
 PLAIN_ACTION = {"insert": "적기", "select": "보기", "delete": "지우기"}
+RULES_BROKEN = "접근 규칙 파일 모양이 이상해요 — 다시 만들게요."
 
 
 def cmd_probe(args: argparse.Namespace) -> int:
-    rules = json.loads(Path(args.rules).read_text(encoding="utf-8"))
-    results = probe(args.url, args.key, rules)
+    try:
+        rules = json.loads(Path(args.rules).read_text(encoding="utf-8"))
+        results = probe(args.url, args.key, rules)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        print(RULES_BROKEN)
+        return 2
     OBS = {"allow": "됨", "deny": "막힘", "unknown": "알 수 없음"}
     if args.json:
         print(json.dumps([dataclasses.asdict(r) for r in results], ensure_ascii=False))

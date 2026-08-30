@@ -57,6 +57,17 @@ class GuardCLITest(unittest.TestCase):
         self.assertEqual(returncode, 2)
         self.assertIn("확인할 폴더를 찾지 못했어요", stdout)
 
+    def test_malformed_rules_exits_2_without_traceback(self):
+        """probe with a rules file missing 'anon' says so in plain Korean, no traceback."""
+        with tempfile.TemporaryDirectory() as tmp:
+            rules = Path(tmp) / "access-rules.json"
+            rules.write_text(json.dumps({"version": 1, "tables": {"responses": {}}}), encoding="utf-8")
+            returncode, stdout, stderr = self.run_guard(
+                "probe", "https://x.supabase.co", "anon", str(rules))
+            self.assertEqual(returncode, 2)
+            self.assertIn("접근 규칙 파일 모양이 이상해요", stdout)
+            self.assertNotIn("Traceback", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
