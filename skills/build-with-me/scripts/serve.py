@@ -23,6 +23,7 @@ def free_port() -> int:
 
 
 def start(root: Path) -> str:
+    stop(root)  # a second preview must replace the first, not orphan it
     port = free_port()
     kwargs = {}
     if sys.platform == "win32":
@@ -41,7 +42,12 @@ def stop(root: Path) -> bool:
     state = root / STATE
     if not state.is_file():
         return False
-    pid = json.loads(state.read_text(encoding="utf-8-sig"))["pid"]
+    try:
+        pid = json.loads(state.read_text(encoding="utf-8-sig"))["pid"]
+    except (OSError, ValueError, KeyError, TypeError):
+        # A truncated or hand-edited state file tells us nothing; drop it and move on.
+        state.unlink(missing_ok=True)
+        return False
     try:
         if sys.platform == "win32":
             subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)

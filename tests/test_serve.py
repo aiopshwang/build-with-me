@@ -14,6 +14,18 @@ sys.path.insert(0, str(REPO_ROOT / "skills/build-with-me/scripts"))
 import serve  # noqa: E402
 
 
+def pid_alive(pid: int) -> bool:
+    if sys.platform == "win32":
+        out = subprocess.run(["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True,
+                             encoding="utf-8", errors="replace").stdout
+        return str(pid) in out
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return False
+    return True
+
+
 class OpenUrlTest(unittest.TestCase):
     def test_codex_env_hands_off(self):
         self.assertEqual(serve.open_url("http://x/", env={"CODEX_SANDBOX": "1"}), "HANDOFF http://x/")
@@ -59,6 +71,37 @@ class StartStopTest(unittest.TestCase):
             time.sleep(0.5)
             with self.assertRaises(Exception):
                 urllib.request.urlopen(url, timeout=1)
+
+    def test_start_twice_leaves_one_server(self):
+        """A second start must not orphan the first server: start stops the old one."""
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "index.html").write_text("<h1>재고표</h1>", encoding="utf-8")
+            root = Path(d)
+            try:
+                serve.start(root)
+                pid1 = json.loads(Path(d, ".bwm/serve.json").read_text(encoding="utf-8"))["pid"]
+                serve.start(root)
+                pid2 = json.loads(Path(d, ".bwm/serve.json").read_text(encoding="utf-8"))["pid"]
+                self.assertNotEqual(pid1, pid2)
+                for _ in range(20):
+                    if not pid_alive(pid1):
+                        break
+                    time.sleep(0.25)
+                self.assertFalse(pid_alive(pid1), f"first server {pid1} is still running")
+                self.assertTrue(pid_alive(pid2))
+            finally:
+                serve.stop(root)
+
+    def test_stop_handles_garbage_state(self):
+        """A truncated or hand-edited state file must not raise a traceback at the learner."""
+        with tempfile.TemporaryDirectory() as d:
+            state = Path(d, ".bwm"); state.mkdir()
+            (state / "serve.json").write_text("not json", encoding="utf-8")
+            out = subprocess.run([sys.executable, str(REPO_ROOT / "skills/build-with-me/scripts/serve.py"),
+                                  "stop", d], capture_output=True, text=True, encoding="utf-8")
+            self.assertNotIn("Traceback", out.stderr)
+            self.assertTrue("NOT_RUNNING" in out.stdout or "STOPPED" in out.stdout, out.stdout)
+            self.assertFalse((state / "serve.json").exists())
 
     def test_stop_accepts_bom_state_file_from_powershell(self):
         with tempfile.TemporaryDirectory() as d:
