@@ -97,5 +97,26 @@ class PublishGateTest(unittest.TestCase):
         self.assertIn("Bad credentials", self.text)
 
 
+class CarryOnTest(unittest.TestCase):
+    text = property(lambda self: read("references/carry-on.md"))
+
+    def test_sections(self):
+        for h in ("## 걸음 끝 두 줄, 보이게", "## 재개 (새 세션·맥락 정리 직후)", "## '안 돼요' 프로토콜",
+                  "## 에러 번역 세 줄", "## 요구가 바뀌면", "## archive", "## 강사에게 보내기"):
+            self.assertIn(h, self.text)
+
+    def test_record_line_says_why(self):
+        self.assertIn("여기까지 적어둘게요", self.text)
+        self.assertIn("다음에 이어서 할 때 이걸 읽어요", self.text)
+
+    def test_agent_looks_first(self):
+        t = self.text
+        self.assertLess(t.index("먼저 스스로 본다"), t.index("빨간 글자"))
+
+    def test_three_line_error_format(self):
+        for k in ("무슨 일", "왜", "뭘 할지"):
+            self.assertIn(k, self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
