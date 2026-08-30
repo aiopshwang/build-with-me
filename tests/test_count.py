@@ -10,10 +10,6 @@ sys.path.insert(0, str(REPO_ROOT / "evals"))
 import count  # noqa: E402
 
 
-def turn(n, learner, agent):
-    return {"turn": n, "learner": learner, "agent": agent}
-
-
 def bash(cmd):
     return json.dumps({"type": "assistant", "message": {"content": [
         {"type": "tool_use", "name": "Bash", "input": {"command": cmd}}]}})
@@ -23,20 +19,45 @@ def say(text):
     return json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}})
 
 
-class CountTest(unittest.TestCase):
-    def test_turns_to_first_screen_and_questions(self):
-        turns = [turn(1, "재고표요", "잘 오셨어요. 뭘 만들고 싶어요?"),
-                 turn(2, "재고표", "여기요: http://127.0.0.1:5000/ 자리만 잡은 거예요.")]
-        self.assertEqual(count.turns_to_first_screen(turns), 2)
-        self.assertEqual(count.questions_before_first_screen(turns), 1)
+def init():
+    return json.dumps({"type": "system", "subtype": "init", "session_id": "s"})
 
-    def test_no_screen_is_none(self):
-        self.assertIsNone(count.turns_to_first_screen([turn(1, "a", "b")]))
+
+class CountTest(unittest.TestCase):
+    def test_first_screen_from_agent_stream(self):
+        stream = "\n".join([
+            init(),
+            say("잘 오셨어요. 뭘 만들고 싶어요?"),
+            bash("python skills/build-with-me/scripts/serve.py start ."),
+            say("이건 자리만 잡은 거예요. 맞아요?"),
+            init(),
+            say("지금 뭐가 보여요?"),
+        ])
+        self.assertEqual(count.first_screen_turn(stream), 1)
+        self.assertEqual(count.questions_before_first_screen(stream), 1)
+
+        stream2 = "\n".join([init(), say("주소예요: http://127.0.0.1:5000/")])
+        self.assertEqual(count.first_screen_turn(stream2), 1)
+
+    def test_first_screen_none(self):
+        stream = "\n".join([init(), say("a?"), init(), say("b? c?")])
+        self.assertIsNone(count.first_screen_turn(stream))
+        self.assertEqual(count.questions_before_first_screen(stream), 3)
 
     def test_identifier_mentions(self):
         hits = count.identifier_mentions(["index.html을 고쳤어요", "getItems 함수", "config.js 두 줄", "화면이 떴어요"],
                                          ["index.html", "config.js"])
         self.assertEqual(sorted(hits), ["getItems", "index.html"])
+
+    def test_identifier_mentions_ascii_boundary(self):
+        # \b breaks next to Hangul (Hangul is \w in Python's Unicode regex), so the
+        # identifier patterns must use ASCII-only lookaround boundaries instead.
+        hits = count.identifier_mentions(
+            ["config.js가 있어요", "index.html을 열어보세요", "getItems를 호출했어요", "user_id를 확인했어요"], [])
+        self.assertEqual(sorted(hits), ["getItems", "index.html", "user_id"])
+
+    def test_identifier_mentions_korean_only(self):
+        self.assertEqual(count.identifier_mentions(["화면이 떴어요. 재고표가 보여요"], []), [])
 
     def test_step_boundaries_and_confirm_ratio(self):
         stream = "\n".join([say("지금 뭐가 보여요?"), bash("git commit -q -m 'bwm: a'"),

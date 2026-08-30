@@ -12,15 +12,18 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 URL_RX = re.compile(r"http://(127\.0\.0\.1|localhost):\d+")
+SERVE_RX = re.compile(r"serve\.py\W*(?:start|open)\b")
 QUESTION_RX = re.compile(r"[^.!?\n]*[?？]")
 CONFIRM_RX = re.compile(r"뭐가 보여요|보이세요|맞아요\?")
 RECORD_RX = re.compile(r"적어\s?둘게요|적어\s?놓을게요|기록해\s?둘게요")
 FOUR = ("누가 볼 수 있나", "비밀키가 밖에 나가나", "비용이 무한인가", "되돌릴 수 있나")
 DEPLOY_RX = re.compile(r"gh repo create|/pages\b|git push")
 ALLOWED_NAMES = {"config.js", "진행.md", "지도.md", "내-말로.md"}
-SNAKE_RX = re.compile(r"\b[a-z]+_[a-z_]+\b")
-CAMEL_RX = re.compile(r"\b[a-z]+[A-Z][A-Za-z]+\b")
-EXT_RX = re.compile(r"\b[\w-]+\.(?:html|js|css|json|py|md|sql)\b")
+A = r"(?<![A-Za-z0-9_])"  # not preceded by an ASCII word char (Hangul is \w, so \b fails here)
+Z = r"(?![A-Za-z0-9_])"  # not followed by an ASCII word char
+SNAKE_RX = re.compile(A + r"[a-z]+_[a-z_]+" + Z)
+CAMEL_RX = re.compile(A + r"[a-z]+[A-Z][A-Za-z]+" + Z)
+EXT_RX = re.compile(A + r"[A-Za-z0-9_-]+\.(?:html|js|css|json|py|md|sql)" + Z)
 CHOICE_RX = re.compile(r"①.*②.*③|(?:\b[A-C]\)\s.*){3}", re.S)
 MAY_I_RX = re.compile(r"해도 될까요")
 FENCE_RX = re.compile(r"```.*?```", re.S)
@@ -37,8 +40,16 @@ def events(stream: str):
 
 
 def blocks(stream: str):
-    """Yield ('text', str) and ('bash', command) in order."""
+    """Yield ('init', ''), ('text', str), and ('bash', command) in order.
+
+    An 'init' block marks the start of a turn (a system/init event begins each
+    turn in the concatenated agent stream), so callers can count turns by
+    counting 'init' blocks.
+    """
     for ev in events(stream):
+        if ev.get("type") == "system" and ev.get("subtype") == "init":
+            yield "init", ""
+            continue
         if ev.get("type") != "assistant":
             continue
         for b in ev.get("message", {}).get("content", []):
@@ -48,20 +59,32 @@ def blocks(stream: str):
                 yield "bash", b.get("input", {}).get("command", "")
 
 
-def turns_to_first_screen(turns: list[dict]) -> int | None:
-    for t in turns:
-        if URL_RX.search(t.get("agent", "")):
-            return t["turn"]
+def first_screen_turn(stream: str) -> int | None:
+    """Turn index (1-based, counted by init events) at which the learner can first see a screen:
+    the first assistant Bash tool_use whose command contains 'serve.py start' or 'serve.py open',
+    or the first assistant text block containing a local URL (URL_RX)."""
+    turn = 0
+    for kind, x in blocks(stream):
+        if kind == "init":
+            turn += 1
+        elif kind == "bash" and SERVE_RX.search(x):
+            return turn
+        elif kind == "text" and URL_RX.search(x):
+            return turn
     return None
 
 
-def questions_before_first_screen(turns: list[dict]) -> int:
+def questions_before_first_screen(stream: str) -> int:
+    """QUESTION_RX matches in assistant text blocks that occur before the first-screen event
+    (across turns). If no screen is ever shown, count all assistant text blocks."""
     n = 0
-    for t in turns:
-        agent = t.get("agent", "")
-        if URL_RX.search(agent):
+    for kind, x in blocks(stream):
+        if kind == "bash" and SERVE_RX.search(x):
             return n
-        n += len(QUESTION_RX.findall(agent))
+        if kind == "text":
+            if URL_RX.search(x):
+                return n
+            n += len(QUESTION_RX.findall(x))
     return n
 
 
@@ -142,14 +165,13 @@ def my_words_tech_terms(workspace: Path) -> int:
 
 
 def count_rep(rep_dir: Path) -> dict:
-    turns = [json.loads(l) for l in (rep_dir / "turns.jsonl").read_text(encoding="utf-8").splitlines() if l.strip()]
     stream = (rep_dir / "transcript-agent.jsonl").read_text(encoding="utf-8")
     ws = rep_dir / "workspace"
     agent_texts = [x for k, x in blocks(stream) if k == "text"]
     ws_files = [p.name for p in ws.rglob("*") if p.is_file() and ".git" not in p.parts]
     return {
-        "첫 화면까지 에이전트 턴 수": turns_to_first_screen(turns),
-        "첫 화면 전 질문 수": questions_before_first_screen(turns),
+        "첫 화면까지 에이전트 턴 수": first_screen_turn(stream),
+        "첫 화면 전 질문 수": questions_before_first_screen(stream),
         "설명 속 식별자": identifier_mentions(agent_texts, ws_files),
         "걸음 수": step_boundaries(stream),
         "걸음당 확인 질문 비율": confirm_questions_per_step(stream),
