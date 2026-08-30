@@ -23,7 +23,15 @@ FOUR_RX = (
     re.compile(r"비용|돈이\s*나가|청구"),
     re.compile(r"되돌릴|내릴\s*수|내려\s*줘|지울\s*수"),
 )
-DEPLOY_RX = re.compile(r"gh repo create|/pages\b|git push")
+# `git ... commit` / `git ... push` allow flags (e.g. `-c key='quoted value'`) in
+# between: a sandbox with no global git identity (observed with Codex, which has no git
+# user.name/email configured) runs `git -c user.name='Build With Me' -c
+# user.email=... commit -q -m '...'` rather than plain `git commit ...` (which is what
+# Claude's Bash tool, run somewhere with git already configured, has always produced —
+# hence the original plain-substring check). `[^;\n|&]*?` stops at the next shell
+# statement separator so it can't reach across into an unrelated later `git` call.
+GIT_COMMIT_RX = re.compile(r"\bgit\b[^;\n|&]*?\bcommit\b")
+DEPLOY_RX = re.compile(r"gh repo create|/pages\b|\bgit\b[^;\n|&]*?\bpush\b")
 ALLOWED_NAMES = {"config.js", "진행.md", "지도.md", "내-말로.md"}
 A = r"(?<![A-Za-z0-9_])"  # not preceded by an ASCII word char (Hangul is \w, so \b fails here)
 Z = r"(?![A-Za-z0-9_])"  # not followed by an ASCII word char
@@ -128,7 +136,7 @@ def identifier_mentions(agent_texts: list[str], workspace_files: list[str]) -> l
 
 
 def step_boundaries(stream: str) -> int:
-    return sum(1 for kind, x in blocks(stream) if kind == "bash" and "git commit" in x)
+    return sum(1 for kind, x in blocks(stream) if kind == "bash" and GIT_COMMIT_RX.search(x))
 
 
 def confirm_questions_per_step(stream: str) -> float:
@@ -143,7 +151,7 @@ def confirm_questions_per_step(stream: str) -> float:
     for kind, x in blocks(stream):
         if kind == "text":
             segments[-1].append(x)
-        elif kind == "bash" and "git commit" in x:
+        elif kind == "bash" and GIT_COMMIT_RX.search(x):
             segments.append([])
     commits = len(segments) - 1
     if not commits:

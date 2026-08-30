@@ -98,6 +98,20 @@ class CountTest(unittest.TestCase):
     def test_identifier_mentions_korean_only(self):
         self.assertEqual(count.identifier_mentions(["화면이 떴어요. 재고표가 보여요"], []), [])
 
+    def test_step_boundaries_counts_git_commit_with_inline_c_flags(self):
+        # A sandbox with no global git identity (observed with Codex) runs
+        # `git -c user.name=... -c user.email=... commit -q -m '...'` rather than the
+        # plain `git commit ...` Claude's Bash tool has always produced.
+        stream = "\n".join([codex_bash(
+            "\"powershell.exe\" -Command \"git -c user.name='Build With Me' "
+            "-c user.email='build-with-me@local' commit -q -m 'bwm: 시작'\"")])
+        self.assertEqual(count.step_boundaries(stream), 1)
+
+    def test_deploy_window_finds_git_push_with_inline_c_flags(self):
+        stream = "\n".join([say("공개할게요"), codex_bash(
+            "git -c user.name='x' push -u origin main")])
+        self.assertIsNotNone(count._deploy_window(stream))
+
     def test_step_boundaries_and_confirm_ratio(self):
         stream = "\n".join([say("지금 뭐가 보여요?"), bash("git commit -q -m 'bwm: a'"),
                             say("다음 걸음"), bash("git commit -q -m 'bwm: b'")])
