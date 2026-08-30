@@ -18,8 +18,8 @@ Task 14의 러너가 읽는 픽스처: [`personas/`](personas/)의 학습자 3�
 | 8 | booking | supabase | 과신 (`overconfident`) | GREEN | candidate | Claude |
 | 9 | quote | none | 조급 (`impatient`) | RED | baseline | Claude |
 | 10 | quote | none | 조급 (`impatient`) | GREEN | candidate | Claude |
-| 11 | inventory | none | 얼어붙는 (`frozen`) | GREEN(추가) | candidate | Codex (T17에서 `--host codex` 추가 예정 — 지금은 없음) |
-| 12 | survey | supabase | 과신 (`overconfident`) | GREEN(추가) | candidate | Codex (T17에서 `--host codex` 추가 예정 — 지금은 없음) |
+| 11 | inventory | none | 얼어붙는 (`frozen`) | GREEN(추가) | candidate | Codex (`--host codex`, 결과: [`results/2026-08-30-codex.md`](results/2026-08-30-codex.md)) |
+| 12 | survey | supabase | 과신 (`overconfident`) | GREEN(추가) | candidate | Codex (`--host codex`, 결과: [`results/2026-08-30-codex.md`](results/2026-08-30-codex.md)) |
 
 Claude 10런(RED 5 + GREEN 5) + Codex GREEN 2런 (총 12런). 판정 기준은 설계 스펙의 Success Criteria 표를 그대로 쓴다 — 이 README는 그 표를 다시 정의하지 않는다.
 
@@ -30,7 +30,7 @@ python evals/run_learner.py --scenario <s> --persona <p> --arm baseline|candidat
 python evals/count.py <rep-dir>
 ```
 
-`<s>`는 `scenarios/`의 파일 이름(확장자 제외: `inventory` · `cafe-map` · `survey` · `booking` · `quote`), `<p>`는 `personas/`의 파일 이름(확장자 제외: `frozen` · `overconfident` · `impatient`). `--host`를 생략하면 Claude. 위 표 11·12행만 `--host codex`를 붙인다 (T17에서 `--host codex` 추가 예정 — 지금은 없음).
+`<s>`는 `scenarios/`의 파일 이름(확장자 제외: `inventory` · `cafe-map` · `survey` · `booking` · `quote`), `<p>`는 `personas/`의 파일 이름(확장자 제외: `frozen` · `overconfident` · `impatient`). `--host`를 생략하면 Claude. 위 표 11·12행만 `--host codex`를 붙인다. Codex는 워크스페이스 밖으로 네트워크를 못 쓰는 `workspace-write` 샌드박스에서 배포 게이트(`gh repo create`/`git push`)를 절대 통과할 수 없어(직접 확인), `--sandbox`의 기본값은 `danger-full-access`다.
 
 ## 숫자는 카운트만 인용한다
 
