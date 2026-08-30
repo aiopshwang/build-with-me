@@ -20,7 +20,7 @@ I can't code. I want to build something.
 
 ## See it
 
-Start here: [시작하기.md](시작하기.md) — the one-page start sheet, Korean then English.
+Start here: [GETTING-STARTED.md](GETTING-STARTED.md) — the one-page start sheet. (Korean version: [시작하기.md](시작하기.md).)
 
 The golden path, in one paragraph: a folder, one sentence, a 90-second placeholder screen so there is something on screen before any question is asked, a north star agreed in one line, a local page built one visible step at a time, one real feature working end to end, a GitHub account handed over when needed, four questions answered before anything goes public (who can see it, does a secret leave, is the cost unbounded, can it be undone), a deploy, a link — and Supabase brought in only if something needs to be saved.
 

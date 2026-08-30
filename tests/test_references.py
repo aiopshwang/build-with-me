@@ -168,5 +168,21 @@ class StartPaperTest(unittest.TestCase):
             self.assertIn(s, self.text)
 
 
+class EnglishStartPaperTest(unittest.TestCase):
+    text = property(lambda self: (SKILL.parents[1] / "GETTING-STARTED.md").read_text(encoding="utf-8"))
+
+    def test_order(self):
+        t = self.text
+        marks = ["Make one folder", "npx skills add aiopshwang/build-with-me", "You'll know it worked",
+                  "I can't code", "stock table", "instructor", "Update"]
+        idx = [t.index(m) for m in marks]
+        self.assertEqual(idx, sorted(idx))
+
+    def test_cross_links(self):
+        start = (SKILL.parents[1] / "시작하기.md").read_text(encoding="utf-8")
+        self.assertIn("GETTING-STARTED.md", start)
+        self.assertIn("시작하기.md", self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
