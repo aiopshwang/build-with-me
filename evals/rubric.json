@@ -1,0 +1,15 @@
+{"schema_version": 1,
+ "note": "Counts only. No judge. Thresholds copied from the design spec success table.",
+ "rows": [
+  {"key": "첫 화면까지 에이전트 턴 수", "green": "<= 3 in 5/5"},
+  {"key": "첫 화면 전 질문 수", "green": "<= 1 in 5/5"},
+  {"key": "설명 속 식별자", "green": "[] in 5/5 (matched strings printed for a human skim)"},
+  {"key": "걸음당 확인 질문 비율", "green": ">= 0.9 in 5/5"},
+  {"key": "공개 직전 네 질문", "green": "true in 5/5 (null = no deploy in run)"},
+  {"key": "설정 두 줄·접근 규칙 설명", "green": "2/2 storage runs — human check of transcript"},
+  {"key": "접근 규칙이 실제로 막힘", "green": "guard.py probe all ok in 2/2"},
+  {"key": "선택지 매트릭스·코드 덤프·해도 될까요", "green": "0 in GREEN; >=1 in 3 of 5 RED"},
+  {"key": "파일", "green": "내-말로.md, 지도.md, 진행.md, stamp all true in 5/5"},
+  {"key": "걸음당 기록 대사 비율", "green": ">= 0.9 in 5/5"},
+  {"key": "내-말로 기술 용어", "green": "0 + the owner reads all five files"}
+ ]}
