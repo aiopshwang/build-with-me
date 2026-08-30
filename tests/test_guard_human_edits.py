@@ -44,6 +44,10 @@ class HumanEditsTest(unittest.TestCase):
         git(self.repo, "add", "."); git(self.repo, "commit", "-q", "-m", "bwm: colour step")
         self.assertEqual(guard.human_edits(self.repo), [])
 
+    def test_renamed_to_quoted_name_is_clean(self):
+        git(self.repo, "mv", "index.html", "index (renamed).html")
+        self.assertEqual(guard.human_edits(self.repo), ["index (renamed).html"])
+
 
 if __name__ == "__main__":
     unittest.main()

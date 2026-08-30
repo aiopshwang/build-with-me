@@ -145,7 +145,8 @@ def human_edits(repo: Path) -> list[str]:
     files: set[str] = set()
     for line in _git(repo, "status", "--porcelain").splitlines():
         if len(line) > 3:
-            files.add(line[3:].strip().strip('"').split(" -> ")[-1])
+            name = line[3:].strip().split(" -> ")[-1].strip()
+            files.add(name.strip('"'))
     log = _git(repo, "log", "--format=%H%x1f%s")
     last_agent = None
     for entry in log.splitlines():

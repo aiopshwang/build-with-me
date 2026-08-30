@@ -1,4 +1,4 @@
-"""CLI layer tests for guard.py commands (pre-share, probe, human-edits)."""
+"""CLI layer tests for the pre-share command."""
 import json
 import os
 import subprocess
