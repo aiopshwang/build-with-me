@@ -90,6 +90,51 @@ def skill_invoked(stream: str) -> bool:
     return False
 
 
+def final_response_codex(stream: str) -> str:
+    """The agent's last word for the turn, from Codex's ``--json`` event stream.
+
+    Codex emits one ``item.completed`` event per finished item; the last one whose
+    ``item.type`` is ``agent_message`` carries the turn's final assistant text (earlier
+    agent_message items in the same turn are commentary before/between tool calls).
+    """
+    final = ""
+    for ev in events(stream):
+        if ev.get("type") != "item.completed":
+            continue
+        item = ev.get("item", {})
+        if item.get("type") == "agent_message":
+            final = item.get("text", "")
+    return final
+
+
+def session_id_codex(stream: str) -> str | None:
+    for ev in events(stream):
+        if ev.get("type") == "thread.started" and ev.get("thread_id"):
+            return ev["thread_id"]
+    return None
+
+
+def skill_invoked_codex(stream: str) -> bool:
+    """True if this turn's stream shows a command that looks like it read SKILL.md.
+
+    Codex has no dedicated Skill tool; it reads files via shell commands (confirmed by
+    spike: ``Get-Content -Raw '...\\.agents\\skills\\build-with-me\\SKILL.md'``). There is
+    no reliable negative signal — a turn with no visible read doesn't prove the skill was
+    never consulted (e.g. cached from an earlier turn) — so callers should only ever OR
+    this into a running True, never treat a False return here as proof of absence.
+    """
+    for ev in events(stream):
+        if ev.get("type") != "item.completed":
+            continue
+        item = ev.get("item", {})
+        if item.get("type") != "command_execution":
+            continue
+        command = item.get("command", "")
+        if "build-with-me" in command and "SKILL.md" in command:
+            return True
+    return False
+
+
 def is_done(text: str) -> bool:
     return END in text
 
@@ -139,7 +184,19 @@ def learner_prompt(facts: str, history: list[tuple[str, str]]) -> str:
     return "\n".join(lines)
 
 
-def agent_argv(*, arm: str, model: str, resume: str | None) -> list[str]:
+def agent_argv(*, host: str, arm: str, model: str, resume: str | None, workspace: Path,
+                sandbox: str, msg: str) -> list[str]:
+    if host == "codex":
+        # `codex exec resume` has no `-C`/`--cd` flag (checked via `codex exec resume
+        # --help`); the resumed session already carries the workspace it started in, and
+        # run_proc() sets the subprocess cwd to workspace on every turn anyway. Both the
+        # first turn and resume need --skip-git-repo-check, confirmed by spike (resume
+        # without it fails with "Not inside a trusted directory").
+        if resume:
+            return ["codex", "exec", "resume", "--last", "--json", "--skip-git-repo-check",
+                    "-s", sandbox, msg]
+        return ["codex", "exec", "--json", "--skip-git-repo-check", "-C", str(workspace),
+                "-s", sandbox, msg]
     argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--setting-sources", "",
             "--strict-mcp-config", "--permission-mode", "bypassPermissions", "--model", model,
             "--tools", AGENT_TOOLS]
@@ -172,20 +229,33 @@ def run_one(args: argparse.Namespace, rep: int) -> dict:
         print(f"output already has {workspace}; delete it or choose another --output")
         sys.exit(2)
     workspace.mkdir(parents=True, exist_ok=False)
+    if args.host == "codex" and args.arm == "candidate":
+        # Codex discovers skills at <workspace>/.agents/skills/<name>/ (no --plugin-dir
+        # equivalent), so the candidate arm needs its own copy per rep.
+        shutil.copytree(REPO_ROOT / "skills/build-with-me", workspace / ".agents/skills/build-with-me")
     env = dict(os.environ, BWM_NO_OPEN="1")
     history: list[tuple[str, str]] = []
     learner_msg = meta["first_message"]
     sid = None
-    invoked = False
+    invoked: bool | None = None if args.host == "codex" else False
     stream_all = []
     try:
         for turn in range(1, args.max_turns + 1):
-            stream, err, rc = run_proc(agent_argv(arm=args.arm, model=args.model, resume=sid),
-                                       cwd=workspace, stdin=learner_msg, timeout=args.timeout, env=env)
+            argv = agent_argv(host=args.host, arm=args.arm, model=args.model, resume=sid,
+                              workspace=workspace, sandbox=args.sandbox, msg=learner_msg)
+            if args.host == "codex":
+                stream, err, rc = run_proc(argv, cwd=workspace, stdin="", timeout=args.timeout, env=env)
+                sid = sid or session_id_codex(stream)
+                agent_msg = final_response_codex(stream)
+                if skill_invoked_codex(stream):
+                    invoked = True
+            else:
+                stream, err, rc = run_proc(argv, cwd=workspace, stdin=learner_msg, timeout=args.timeout,
+                                           env=env)
+                sid = sid or session_id(stream)
+                agent_msg = final_response(stream)
+                invoked = invoked or skill_invoked(stream)
             stream_all.append(stream)
-            sid = sid or session_id(stream)
-            agent_msg = final_response(stream)
-            invoked = invoked or skill_invoked(stream)
             history.append((learner_msg, agent_msg))
             with (rep_dir / "turns.jsonl").open("a", encoding="utf-8") as f:
                 f.write(json.dumps({"turn": turn, "learner": learner_msg, "agent": agent_msg,
@@ -205,7 +275,8 @@ def run_one(args: argparse.Namespace, rep: int) -> dict:
         (rep_dir / "transcript-agent.jsonl").write_text(
             "\n".join(s if s.endswith("\n") else s + "\n" for s in stream_all), encoding="utf-8")
     record = {"scenario": args.scenario, "persona": args.persona, "arm": args.arm, "rep": rep,
-              "turns": len(history), "skill_invoked": invoked if args.arm == "candidate" else False,
+              "host": args.host, "turns": len(history),
+              "skill_invoked": invoked if args.arm == "candidate" else False,
               "storage": meta.get("storage", "none")}
     (rep_dir / "run.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     return record
@@ -215,8 +286,14 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--scenario", required=True); p.add_argument("--persona", required=True)
     p.add_argument("--arm", choices=("baseline", "candidate"), required=True)
+    p.add_argument("--host", choices=("claude", "codex"), default="claude")
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--model", default="sonnet"); p.add_argument("--learner-model", default="sonnet")
+    # workspace-write blocks outbound network (confirmed by spike: `git ls-remote` to
+    # github.com fails to connect in ~40ms under workspace-write, succeeds under
+    # danger-full-access) — the publish gate needs `gh repo create`/`git push`, so Codex
+    # runs default to full access. Only used when --host codex.
+    p.add_argument("--sandbox", default="danger-full-access")
     p.add_argument("--max-turns", type=int, default=15); p.add_argument("--timeout", type=int, default=600)
     p.add_argument("--reps", type=int, default=1)
     args = p.parse_args(argv)

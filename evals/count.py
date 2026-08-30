@@ -51,18 +51,33 @@ def blocks(stream: str):
     An 'init' block marks the start of a turn (a system/init event begins each
     turn in the concatenated agent stream), so callers can count turns by
     counting 'init' blocks.
+
+    Understands two transcript shapes without being told which produced the stream:
+    Claude Code's stream-json ('system'/'init' once per turn, 'assistant' events with
+    text/tool_use content blocks) and Codex's `exec --json` JSONL ('thread.started' once
+    per turn's process, 'item.completed' events whose item.type is 'agent_message' or
+    'command_execution'). A concatenated multi-turn transcript may only ever contain one
+    of the two shapes (one host per run), so there's no ambiguity between them.
     """
     for ev in events(stream):
-        if ev.get("type") == "system" and ev.get("subtype") == "init":
+        t = ev.get("type")
+        if t == "system" and ev.get("subtype") == "init":
             yield "init", ""
-            continue
-        if ev.get("type") != "assistant":
-            continue
-        for b in ev.get("message", {}).get("content", []):
-            if b.get("type") == "text":
-                yield "text", b.get("text", "")
-            elif b.get("type") == "tool_use" and b.get("name") == "Bash":
-                yield "bash", b.get("input", {}).get("command", "")
+        elif t == "assistant":
+            for b in ev.get("message", {}).get("content", []):
+                if b.get("type") == "text":
+                    yield "text", b.get("text", "")
+                elif b.get("type") == "tool_use" and b.get("name") == "Bash":
+                    yield "bash", b.get("input", {}).get("command", "")
+        elif t == "thread.started":
+            yield "init", ""
+        elif t == "item.completed":
+            item = ev.get("item", {})
+            it = item.get("type")
+            if it == "agent_message":
+                yield "text", item.get("text", "")
+            elif it == "command_execution":
+                yield "bash", item.get("command", "")
 
 
 def first_screen_turn(stream: str) -> int | None:

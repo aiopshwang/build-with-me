@@ -23,7 +23,46 @@ def init():
     return json.dumps({"type": "system", "subtype": "init", "session_id": "s"})
 
 
+def codex_thread_started():
+    return json.dumps({"type": "thread.started", "thread_id": "01a051e5-8b24"})
+
+
+def codex_say(text):
+    return json.dumps({"type": "item.completed", "item": {"type": "agent_message", "text": text}})
+
+
+def codex_bash(cmd):
+    return json.dumps({"type": "item.completed", "item": {"type": "command_execution", "command": cmd}})
+
+
 class CountTest(unittest.TestCase):
+    def test_blocks_reads_codex_shaped_stream(self):
+        # Event shapes captured from a real `codex exec --json` spike run
+        # (codex-cli 0.150.0): thread.started marks a turn, item.completed items carry
+        # agent_message text or command_execution commands.
+        stream = "\n".join([
+            codex_thread_started(),
+            codex_say("잘 오셨어요. 뭘 만들고 싶어요?"),
+            codex_bash("powershell -Command \"python skills/build-with-me/scripts/serve.py start .\""),
+        ])
+        self.assertEqual(list(count.blocks(stream)), [
+            ("init", ""),
+            ("text", "잘 오셨어요. 뭘 만들고 싶어요?"),
+            ("bash", "powershell -Command \"python skills/build-with-me/scripts/serve.py start .\""),
+        ])
+
+    def test_first_screen_and_step_boundaries_work_on_codex_stream(self):
+        stream = "\n".join([
+            codex_thread_started(),
+            codex_say("잘 오셨어요."),
+            codex_bash("powershell -Command \"python skills/build-with-me/scripts/serve.py start .\""),
+            codex_say("지금 뭐가 보여요?"),
+            codex_bash("powershell -Command \"git commit -q -m 'bwm: a'\""),
+        ])
+        self.assertEqual(count.first_screen_turn(stream), 1)
+        self.assertEqual(count.step_boundaries(stream), 1)
+
+
     def test_first_screen_from_agent_stream(self):
         stream = "\n".join([
             init(),
