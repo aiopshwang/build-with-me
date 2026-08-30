@@ -25,5 +25,31 @@ class AssetsTest(unittest.TestCase):
         self.assertIn("build-with-me", lines[0])
 
 
+class StartAndDecomposeTest(unittest.TestCase):
+    text = property(lambda self: read("references/start-and-decompose.md"))
+
+    def test_sections(self):
+        for h in ("## 진입 6단계", "## 예시 폴백", "## 이어서 / 새로", "## 북극성", "## 범위 판별과 축소안",
+                  "## 거꾸로 파기 (O/P/I)", "## 유도 규칙 6", "## 강도 다이얼"):
+            self.assertIn(h, self.text)
+
+    def test_first_screen_before_questions(self):
+        t = self.text
+        self.assertLess(t.index("임시 한 줄 페이지"), t.index("세 줄 되풀이"))
+        self.assertIn("첫 화면 전 학습자에게 하는 질문은 최대 1개", t)
+
+    def test_no_intensity_question_and_quiet_git(self):
+        self.assertIn("강도는 묻지 않고 ②로 시작", self.text)
+        self.assertIn("git init -q", self.text)
+
+    def test_folder_step_and_handoff_format(self):
+        self.assertIn("VS Code면 이 폴더를 열고", self.text)
+        self.assertIn("끝나면 '됐어요'라고 해주세요", self.text)
+
+    def test_scenarios_named_in_fallback(self):
+        for s in ("재고표", "설문", "예약"):
+            self.assertIn(s, self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
