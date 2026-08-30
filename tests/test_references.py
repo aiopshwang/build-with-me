@@ -50,6 +50,9 @@ class StartAndDecomposeTest(unittest.TestCase):
         for s in ("재고표", "설문", "예약"):
             self.assertIn(s, self.text)
 
+    def test_storage_moment_routes_to_reference(self):
+        self.assertIn("저장'이라는 답이 나오는 순간", self.text)
+
 
 class StorageTest(unittest.TestCase):
     text = property(lambda self: read("references/storage-questions-first.md"))
@@ -117,6 +120,9 @@ class CarryOnTest(unittest.TestCase):
         for k in ("무슨 일", "왜", "뭘 할지"):
             self.assertIn(k, self.text)
 
+    def test_carry_on_appends_my_words_line(self):
+        self.assertIn("내-말로.md`에 이 걸음의 한 줄", self.text)
+
 
 class SkillStructureTest(unittest.TestCase):
     text = property(lambda self: read("SKILL.md"))
@@ -139,6 +145,12 @@ class SkillStructureTest(unittest.TestCase):
     def test_seven_rules_and_do_not_table(self):
         self.assertEqual(self.text.count("\n### 규칙 "), 7)
         self.assertIn("## 하지 않는 것", self.text)
+
+    def test_rule4_records_at_intensity_two(self):
+        self.assertIn("내-말로 파일에 바로 적는다", self.text)
+
+    def test_do_not_run_own_server(self):
+        self.assertIn("서버를 직접 띄우기", self.text)
 
 
 class StartPaperTest(unittest.TestCase):
