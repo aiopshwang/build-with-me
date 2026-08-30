@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "build-with-me",
+  "displayName": "Build With Me",
+  "version": "0.1.0",
+  "description": "A tutor for people who installed Claude Code or Codex but cannot code: from one sentence to a local page in minutes, then a shareable link, leaving a map and a plain-words doc behind.",
+  "author": { "name": "aiopshwang", "url": "https://github.com/aiopshwang" },
+  "homepage": "https://github.com/aiopshwang/build-with-me#readme",
+  "repository": "https://github.com/aiopshwang/build-with-me",
+  "license": "MIT",
+  "keywords": ["agent-skills", "tutor", "beginners", "vibe-coding", "codex", "claude-code", "education"],
+  "skills": "./skills/"
+}

@@ -1,0 +1,22 @@
+{
+  "name": "build-with-me",
+  "interface": {
+    "displayName": "Build With Me"
+  },
+  "plugins": [
+    {
+      "name": "build-with-me",
+      "version": "0.1.0",
+      "source": {
+        "source": "url",
+        "url": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "education",
+      "skills": ["./skills/build-with-me"]
+    }
+  ]
+}
