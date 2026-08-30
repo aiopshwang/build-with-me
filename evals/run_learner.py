@@ -22,6 +22,7 @@ EVALS = Path(__file__).resolve().parent
 REPO_ROOT = EVALS.parent
 AGENT_TOOLS = "Bash,Read,Write,Edit,Glob,Grep,Skill"
 END = "[끝]"
+SERVE = REPO_ROOT / "skills/build-with-me/scripts/serve.py"
 
 
 def launch_command(argv: list[str]) -> list[str]:
@@ -113,6 +114,10 @@ def run_proc(argv: list[str], *, cwd: Path, stdin: str, timeout: int, env: dict)
         return (exc.stdout if isinstance(exc.stdout, str) else ""), "timeout", 124
 
 
+def stop_preview(workspace: Path) -> None:
+    subprocess.run([sys.executable, str(SERVE), "stop", str(workspace)], capture_output=True, text=True)
+
+
 def run_one(args: argparse.Namespace, rep: int) -> dict:
     meta, facts = read_scenario(args.scenario)
     persona = EVALS / "personas" / f"{args.persona}.md"
@@ -125,27 +130,31 @@ def run_one(args: argparse.Namespace, rep: int) -> dict:
     sid = None
     invoked = False
     stream_all = []
-    for turn in range(1, args.max_turns + 1):
-        stream, err, rc = run_proc(agent_argv(arm=args.arm, model=args.model, resume=sid),
-                                   cwd=workspace, stdin=learner_msg, timeout=args.timeout, env=env)
-        stream_all.append(stream)
-        sid = sid or session_id(stream)
-        agent_msg = final_response(stream)
-        invoked = invoked or skill_invoked(stream)
-        history.append((learner_msg, agent_msg))
-        with (rep_dir / "turns.jsonl").open("a", encoding="utf-8") as f:
-            f.write(json.dumps({"turn": turn, "learner": learner_msg, "agent": agent_msg,
-                                "session_id": sid, "rc": rc}, ensure_ascii=False) + "\n")
-        if rc == 124 or not agent_msg.strip():
-            break
-        out, _, _ = run_proc(["claude", "-p", "--model", args.learner_model, "--setting-sources", "",
-                              "--strict-mcp-config", "--tools", "", "--append-system-prompt",
-                              persona.read_text(encoding="utf-8")],
-                             cwd=workspace, stdin=learner_prompt(facts, history), timeout=180, env=env)
-        learner_msg = out.strip()
-        if is_done(learner_msg):
-            break
-    (rep_dir / "transcript-agent.jsonl").write_text("\n".join(stream_all), encoding="utf-8")
+    try:
+        for turn in range(1, args.max_turns + 1):
+            stream, err, rc = run_proc(agent_argv(arm=args.arm, model=args.model, resume=sid),
+                                       cwd=workspace, stdin=learner_msg, timeout=args.timeout, env=env)
+            stream_all.append(stream)
+            sid = sid or session_id(stream)
+            agent_msg = final_response(stream)
+            invoked = invoked or skill_invoked(stream)
+            history.append((learner_msg, agent_msg))
+            with (rep_dir / "turns.jsonl").open("a", encoding="utf-8") as f:
+                f.write(json.dumps({"turn": turn, "learner": learner_msg, "agent": agent_msg,
+                                    "session_id": sid, "rc": rc}, ensure_ascii=False) + "\n")
+            if rc == 124 or not agent_msg.strip():
+                break
+            out, _, _ = run_proc(["claude", "-p", "--model", args.learner_model, "--setting-sources", "",
+                                  "--strict-mcp-config", "--tools", "", "--append-system-prompt",
+                                  persona.read_text(encoding="utf-8")],
+                                 cwd=workspace, stdin=learner_prompt(facts, history), timeout=180, env=env)
+            learner_msg = out.strip()
+            if is_done(learner_msg):
+                break
+    finally:
+        stop_preview(workspace)
+    (rep_dir / "transcript-agent.jsonl").write_text(
+        "\n".join(s if s.endswith("\n") else s + "\n" for s in stream_all), encoding="utf-8")
     record = {"scenario": args.scenario, "persona": args.persona, "arm": args.arm, "rep": rep,
               "turns": len(history), "skill_invoked": invoked if args.arm == "candidate" else False,
               "storage": meta.get("storage", "none")}

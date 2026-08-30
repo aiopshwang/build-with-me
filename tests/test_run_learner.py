@@ -34,6 +34,14 @@ class ParseTest(unittest.TestCase):
                                                             "input": {"skill": "build-with-me"}}]}}
         self.assertTrue(run_learner.skill_invoked(json.dumps(ev)))
 
+    def test_stop_preview_removes_state_file(self):
+        import subprocess, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            state = Path(d, ".bwm"); state.mkdir()
+            (state / "serve.json").write_text(json.dumps({"port": 1, "pid": 999999}), encoding="utf-8")
+            run_learner.stop_preview(Path(d))
+            self.assertFalse((state / "serve.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
