@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build With Me"
+  short_description: "Tutor for non-coders: one sentence → local page → link"
+  default_prompt: "$build-with-me: I can't code. Help me build something I can show people."

@@ -118,5 +118,28 @@ class CarryOnTest(unittest.TestCase):
             self.assertIn(k, self.text)
 
 
+class SkillStructureTest(unittest.TestCase):
+    text = property(lambda self: read("SKILL.md"))
+
+    def test_router_and_invariants_come_first(self):
+        t = self.text
+        self.assertLess(t.index("## 언제 무엇을 읽나"), t.index("## 불변식 5"))
+        self.assertLess(t.index("## 불변식 5"), t.index("## 규칙 7"))
+
+    def test_router_points_to_all_four_references(self):
+        for ref in ("references/start-and-decompose.md", "references/storage-questions-first.md",
+                    "references/publish-safety-gate.md", "references/carry-on.md"):
+            self.assertIn(ref, self.text)
+
+    def test_description_has_beginner_phrases(self):
+        head = self.text.split("\n---", 1)[0]
+        for phrase in ("코딩", "처음", "만들고 싶", "어제 하던"):
+            self.assertIn(phrase, head)
+
+    def test_seven_rules_and_do_not_table(self):
+        self.assertEqual(self.text.count("\n### 규칙 "), 7)
+        self.assertIn("## 하지 않는 것", self.text)
+
+
 if __name__ == "__main__":
     unittest.main()
