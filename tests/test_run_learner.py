@@ -42,6 +42,26 @@ class ParseTest(unittest.TestCase):
             run_learner.stop_preview(Path(d))
             self.assertFalse((state / "serve.json").exists())
 
+    def test_storage_facts_empty_for_none(self):
+        self.assertEqual(run_learner.storage_facts({"storage": "none"}, {}), "")
+
+    def test_storage_facts_includes_url_and_key(self):
+        env = {"BWM_EVAL_SUPABASE_URL": "https://x.supabase.co", "BWM_EVAL_SUPABASE_KEY": "k"}
+        facts = run_learner.storage_facts({"storage": "supabase"}, env)
+        self.assertIn("주소: https://x.supabase.co", facts)
+        self.assertIn("공개 키: k", facts)
+        self.assertIn("됐어요", facts)
+
+    def test_storage_facts_missing_env_exits_2(self):
+        import io, contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            with self.assertRaises(SystemExit) as ctx:
+                run_learner.storage_facts({"storage": "supabase"}, {})
+        self.assertEqual(ctx.exception.code, 2)
+        self.assertIn("BWM_EVAL_SUPABASE_URL", buf.getvalue())
+        self.assertIn("BWM_EVAL_SUPABASE_KEY", buf.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

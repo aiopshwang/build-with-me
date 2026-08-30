@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Mapping
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -82,7 +83,35 @@ def read_scenario(name: str) -> tuple[dict, str]:
     m = re.match(r"---\n(.*?)\n---\n(.*)", text, re.S)
     meta = dict(line.split(":", 1) for line in m.group(1).splitlines() if ":" in line)
     meta = {k.strip(): v.strip() for k, v in meta.items()}
-    return meta, m.group(2).strip()
+    facts = m.group(2).strip()
+    extra = storage_facts(meta, os.environ)
+    if extra:
+        facts = facts + "\n\n" + extra
+    return meta, facts
+
+
+def storage_facts(meta: dict, env: Mapping[str, str]) -> str:
+    """Facts the simulated learner needs to hand off a pre-made Supabase project.
+
+    Returns "" for non-storage scenarios. For a storage scenario, reads
+    BWM_EVAL_SUPABASE_URL / BWM_EVAL_SUPABASE_KEY from env and exits (code 2,
+    after printing why) if either is missing, since the run can't be meaningful
+    without them.
+    """
+    if meta.get("storage") != "supabase":
+        return ""
+    url = env.get("BWM_EVAL_SUPABASE_URL")
+    key = env.get("BWM_EVAL_SUPABASE_KEY")
+    if not url or not key:
+        print("storage scenario needs BWM_EVAL_SUPABASE_URL and BWM_EVAL_SUPABASE_KEY")
+        raise SystemExit(2)
+    return (
+        "저장소는 강사가 미리 만들어줬습니다. 에이전트가 \"저장소 화면에서 SQL을 붙여넣고 "
+        "Run\" 같은 걸 시키면 \"됐어요\"라고만 답하세요(실제로는 강사가 이미 해둔 상태입니다). "
+        "에이전트가 주소와 공개 열쇠(키)를 붙여달라고 하면 아래 두 줄을 그대로 붙여넣으세요:\n"
+        f"주소: {url}\n"
+        f"공개 키: {key}"
+    )
 
 
 def learner_prompt(facts: str, history: list[tuple[str, str]]) -> str:
