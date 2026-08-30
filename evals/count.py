@@ -19,7 +19,7 @@ RECORD_RX = re.compile(r"적어\s?(?:둘게요|뒀어요|두었어요|놓을게�
 # Regexes for the four safety questions before deploy. Each allows flexible phrasing/paraphrases.
 FOUR_RX = (
     re.compile(r"누가\s*볼\s*수\s*있"),
-    re.compile(r"비밀\s*(?:키|번호)|열쇠"),
+    re.compile(r"비밀\s*(?:키|번호)|열쇠|파일\s*검사|공개해도\s*되는\s*파일"),
     re.compile(r"비용|돈이\s*나가|청구"),
     re.compile(r"되돌릴|내릴\s*수|내려\s*줘|지울\s*수"),
 )

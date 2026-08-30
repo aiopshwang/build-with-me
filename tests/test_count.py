@@ -104,6 +104,17 @@ class CountTest(unittest.TestCase):
         self.assertIsNotNone(matches[2])  # 돈이 나가
         self.assertIsNotNone(matches[3])  # 내릴 수 or 내려줘
 
+    def test_four_questions_accepts_file_check_phrasing(self):
+        """The second question can be answered with file-check phrasing."""
+        stream = "\n".join([
+            say("① 누가 볼 수 있나 — 누구나"),
+            say("② 파일 검사할게요."),
+            say("③ 비용 — 무료"),
+            say("④ 내리는 법 — 내려줘 하면 돼요"),
+            bash("gh repo create x --public --source=. --push")
+        ])
+        self.assertTrue(count.four_questions_before_deploy(stream))
+
     def test_four_questions_missing_one_is_false(self):
         """If any of the four questions is missing, the gate fails."""
         stream = "\n".join([
