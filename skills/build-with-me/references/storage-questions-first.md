@@ -12,7 +12,7 @@
 표에 실제 한 줄을 같이 적어본다: "김민수 / 2026-09-01 14:00 / 2명". 이 한 줄이 열 이름의 검증이다.
 
 ## 접근 규칙을 쉬운 말로
-"누구나 적을 수 있고, 보는 건 당신뿐" — 남이 남긴 것에 이름·연락처가 들어오면 **항상** 이 규칙. 목록을 남에게 보여주는 앱(재고표 공개)은 "누구나 볼 수 있고, 적는 건 당신뿐". 두 문장 중 하나를 학습자가 고른다.
+"누구나 적을 수 있고, 보는 건 당신뿐" — 남이 남긴 것에 이름·연락처가 들어오면 **항상** 이 규칙. 이름·연락처가 들어오면 고르지 않고 첫 문장으로 잠근다. 개인정보가 없을 때만 두 문장 중 하나를 학습자가 고른다 — 목록을 남에게 보여주는 앱(재고표 공개)은 "누구나 볼 수 있고, 적는 건 당신뿐".
 
 ## SQL과 access-rules.json 같이 만들기
 [`assets/rls.sql.tmpl`](../assets/rls.sql.tmpl)의 `{{table}}`·`{{columns}}`를 채운 SQL과, 같은 뜻의 `access-rules.json`(형식은 [`assets/access-rules.example.json`](../assets/access-rules.example.json))을 **함께** 만든다. json의 `probe_row`에는 Worked Example 한 줄을 넣는다. 둘이 어긋나면 `guard.py probe`가 잡는다.
@@ -24,17 +24,19 @@
 
 ② "이건 당신이 해야 해요. 화면에 **SQL Editor**가 보이면 아래 글을 붙여넣고 **Run**을 누르세요. 끝나면 '됐어요'라고 해주세요."
 
-SQL 전문을 보여준다(예외 항목):
+SQL 전문을 보여준다(예외 항목). 아래는 예시다 — 실제로는 "## SQL과 access-rules.json 같이 만들기"에서 채운 SQL을 보여준다.
 
 ```sql
--- {{table}}: 누구나 적을 수 있고, 보는 것과 지우는 것은 당신(대시보드)뿐
-create table if not exists public.{{table}} (
+-- responses: 누구나 적을 수 있고, 보는 것과 지우는 것은 당신(대시보드)뿐
+create table if not exists public.responses (
   id bigint generated always as identity primary key,
   created_at timestamptz not null default now(),
-  {{columns}}
+  name text not null,
+  slot text not null,
+  people int not null
 );
-alter table public.{{table}} enable row level security;
-create policy "anyone can insert" on public.{{table}} for insert to anon with check (true);
+alter table public.responses enable row level security;
+create policy "anyone can insert" on public.responses for insert to anon with check (true);
 -- select/delete 정책 없음 = anon은 볼 수도 지울 수도 없음
 ```
 
