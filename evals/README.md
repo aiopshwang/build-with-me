@@ -7,7 +7,7 @@ Task 14의 러너가 읽는 픽스처: [`personas/`](personas/)의 학습자 3�
 시나리오 × 페르소나 짝은 5개로 고정: `inventory`×`frozen`, `cafe-map`×`frozen`, `survey`×`overconfident`, `booking`×`overconfident`, `quote`×`impatient`. 다섯 짝 각각 RED(`--arm baseline`)와 GREEN(`--arm candidate`)으로 한 번씩, 전부 Claude 호스트 — 이게 Success Criteria 표가 세는 10런(RED 5 + GREEN 5, Claude 전량)이다. 그 10런과 별개로 Codex 호스트에서 GREEN만 두 번 더 돈다(`--arm candidate --host codex`): `inventory`×`frozen`(저장 없음)과 `survey`×`overconfident`(저장 있음). Codex 2런은 참고용으로 따로 보고하고 Claude의 10런 집계에 섞지 않는다.
 
 | # | 시나리오 | storage | 페르소나 | 조건 | arm | 호스트 |
-|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- |
 | 1 | inventory | none | 얼어붙는 (`frozen`) | RED | baseline | Claude |
 | 2 | inventory | none | 얼어붙는 (`frozen`) | GREEN | candidate | Claude |
 | 3 | cafe-map | none | 얼어붙는 (`frozen`) | RED | baseline | Claude |

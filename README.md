@@ -33,6 +33,7 @@ Both transcripts below are from real runs of the same request ("an app that show
 > **엑셀 재고 파일을 화면으로 보여주는 앱을 만들어 드릴 수 있어요.** 시작하기 전에 몇 가지만 알려주세요.
 >
 > **1. 엑셀 파일은 어떻게 생겼나요?**
+>
 > - 품목명, 수량, 단위, 날짜 같은 항목이 있나요?
 > - 컬럼(열) 이름들을 알려주실 수 있나요?
 >

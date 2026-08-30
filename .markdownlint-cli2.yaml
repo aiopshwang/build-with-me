@@ -5,7 +5,14 @@ config:
   MD033: false
 # Fixture repositories are synthetic project content, not documentation, and
 # the fixture payload files (context summary, transcript, request) are handed
-# to actors verbatim, so neither is linted as documentation.
+# to actors verbatim, so neither is linted as documentation. The same applies
+# to eval personas/scenarios (prompts handed to actors verbatim) and to the
+# skill's asset templates (copied byte-for-byte into a learner's project;
+# their exact first lines are asserted by tests/test_references.py and
+# evals/count.py, so they cannot gain a heading just to satisfy MD041).
 ignores:
   - "evals/fixtures/*/repo/**"
   - "evals/fixtures/*/*.md"
+  - "evals/personas/*.md"
+  - "evals/scenarios/*.md"
+  - "skills/build-with-me/assets/*.md"
