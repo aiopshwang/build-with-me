@@ -87,6 +87,33 @@ class CountTest(unittest.TestCase):
         stream2 = "\n".join([bash("gh repo create x --public"), say("누가 볼 수 있나 비밀키가 밖에 나가나 비용이 무한인가 되돌릴 수 있나")])
         self.assertFalse(count.four_questions_before_deploy(stream2))
 
+    def test_four_questions_accepts_paraphrases(self):
+        """The four questions can be asked in various paraphrased phrasings."""
+        stream = "\n".join([
+            say("① 누가 볼 수 있나 — 누구나요"),
+            say("② 비밀번호 같은 게 올라가나 — 없어요"),
+            say("③ 돈이 나가나 — 무료예요"),
+            say("④ 내릴 수 있나 — 내려줘 하면 돼요"),
+            bash("gh repo create x --public --source=. --push")
+        ])
+        self.assertTrue(count.four_questions_before_deploy(stream))
+        matches = count.four_questions_matches(stream)
+        self.assertEqual(len(matches), 4)
+        self.assertIsNotNone(matches[0])  # 누가 볼 수 있
+        self.assertIsNotNone(matches[1])  # 비밀번호
+        self.assertIsNotNone(matches[2])  # 돈이 나가
+        self.assertIsNotNone(matches[3])  # 내릴 수 or 내려줘
+
+    def test_four_questions_missing_one_is_false(self):
+        """If any of the four questions is missing, the gate fails."""
+        stream = "\n".join([
+            say("① 누가 볼 수 있나 — 누구나요"),
+            say("② 비밀번호 같은 게 올라가나 — 없어요"),
+            say("③ 돈이 나가나 — 무료예요"),
+            bash("gh repo create x --public --source=. --push")
+        ])
+        self.assertFalse(count.four_questions_before_deploy(stream))
+
     def test_four_questions_window_starts_at_the_last_commit(self):
         """The gate is the talk right before the deploy, not anything said many steps ago."""
         asked = [say("누가 볼 수 있나: 누구나"), say("비밀키가 밖에 나가나: 없어요"),
