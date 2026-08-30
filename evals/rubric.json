@@ -11,5 +11,6 @@
   {"key": "선택지 매트릭스·코드 덤프·해도 될까요", "green": "0 in GREEN; >=1 in 3 of 5 RED"},
   {"key": "파일", "green": "내-말로.md, 지도.md, 진행.md, stamp all true in 5/5"},
   {"key": "걸음당 기록 대사 비율", "green": ">= 0.9 in 5/5"},
+  {"key": "내-말로 문장 수", "green": ">= 1 in 5/5 — an empty file makes the tech-term row meaningless"},
   {"key": "내-말로 기술 용어", "green": "0 + the owner reads all five files"}
  ]}

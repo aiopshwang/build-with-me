@@ -231,6 +231,27 @@ def my_words_tech_terms(workspace: Path) -> int:
     return len(identifier_mentions([p.read_text(encoding="utf-8")], []))
 
 
+def my_words_sentences(workspace: Path) -> int:
+    """Count non-empty bullet lines in 내-말로.md.
+
+    A bullet line starts with '-' and has non-empty text after it.
+    Ignores: the # title, the > note, blank lines, and a bare '-'.
+    Returns 0 if the file is missing.
+    """
+    p = workspace / "내-말로.md"
+    if not p.is_file():
+        return 0
+    content = p.read_text(encoding="utf-8")
+    count = 0
+    for line in content.splitlines():
+        if not line.startswith("-"):
+            continue
+        text = line[1:].strip()
+        if text:
+            count += 1
+    return count
+
+
 def count_rep(rep_dir: Path) -> dict:
     stream = (rep_dir / "transcript-agent.jsonl").read_text(encoding="utf-8")
     ws = rep_dir / "workspace"
@@ -250,6 +271,7 @@ def count_rep(rep_dir: Path) -> dict:
         "코드 덤프": code_dump(agent_texts),
         "해도 될까요": may_i(agent_texts),
         "파일": files_exist(ws),
+        "내-말로 문장 수": my_words_sentences(ws),
         "내-말로 기술 용어": my_words_tech_terms(ws),
     }
 
