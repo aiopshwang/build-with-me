@@ -48,6 +48,11 @@ class HumanEditsTest(unittest.TestCase):
         git(self.repo, "mv", "index.html", "index (renamed).html")
         self.assertEqual(guard.human_edits(self.repo), ["index (renamed).html"])
 
+    def test_non_repo_is_reported_not_empty(self):
+        """"cannot look" and "nothing was edited" are different answers; [] means the second."""
+        with tempfile.TemporaryDirectory() as d:
+            self.assertIsNone(guard.human_edits(Path(d)))
+
 
 if __name__ == "__main__":
     unittest.main()

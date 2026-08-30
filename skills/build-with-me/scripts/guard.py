@@ -188,9 +188,18 @@ def _git(repo: Path, *args: str) -> str:
     return out.stdout if out.returncode == 0 else ""
 
 
-def human_edits(repo: Path) -> list[str]:
+def human_edits(repo: Path) -> list[str] | None:
+    """Files a person touched since the agent's last commit, or None when we cannot look.
+
+    An empty list means "nothing was edited". A folder with no history cannot answer
+    that question at all, so it answers None instead of pretending the tree is clean.
+    """
+    status = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"], capture_output=True,
+                            text=True, encoding="utf-8", errors="replace", check=False)
+    if status.returncode != 0:
+        return None
     files: set[str] = set()
-    for line in _git(repo, "status", "--porcelain").splitlines():
+    for line in status.stdout.splitlines():
         if len(line) > 3:
             name = line[3:].strip().split(" -> ")[-1].strip()
             files.add(name.strip('"'))
@@ -210,6 +219,9 @@ def human_edits(repo: Path) -> list[str]:
 
 def cmd_human_edits(args: argparse.Namespace) -> int:
     files = human_edits(Path(args.dir).resolve())
+    if files is None:
+        print("여기는 아직 기록이 시작되지 않은 폴더라 직접 손본 파일을 확인할 수 없어요.")
+        return 2
     if args.json:
         print(json.dumps(files, ensure_ascii=False))
     elif files:

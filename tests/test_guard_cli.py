@@ -57,6 +57,14 @@ class GuardCLITest(unittest.TestCase):
         self.assertEqual(returncode, 2)
         self.assertIn("확인할 폴더를 찾지 못했어요", stdout)
 
+    def test_human_edits_outside_a_repo_exits_2(self):
+        """A folder with no history cannot answer the question; it must not answer 'none'."""
+        with tempfile.TemporaryDirectory() as tmp:
+            returncode, stdout, _ = self.run_guard("human-edits", tmp)
+            self.assertEqual(returncode, 2)
+            self.assertIn("여기는 아직 기록이 시작되지 않은 폴더라 직접 손본 파일을 확인할 수 없어요.", stdout)
+            self.assertNotIn("직접 손본 파일은 없어요", stdout)
+
     def test_malformed_rules_exits_2_without_traceback(self):
         """probe with a rules file missing 'anon' says so in plain Korean, no traceback."""
         with tempfile.TemporaryDirectory() as tmp:
