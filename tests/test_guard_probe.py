@@ -102,6 +102,36 @@ class ProbeTest(unittest.TestCase):
         self.assertEqual(fake.calls[2][0], "DELETE")
         self.assertIn("answer=eq." + urllib.parse.quote("확인용"), fake.calls[2][1])
 
+    def test_public_list_variant_passes(self):
+        """'누구나 볼 수 있고, 적는 건 당신뿐' — insert denied, select allowed, delete denied.
+
+        With insert blocked the probe can never create its own row, so delete is
+        genuinely unverifiable. The control action (select) succeeded, so this must
+        read as consistent with the rules, not as a mismatch to report.
+        """
+        rules = {"version": 1, "tables": {"items": {
+            "anon": {"insert": False, "select": True, "delete": False},
+            "probe_row": {"answer": "확인용"}}}}
+        fake = FakeSupabase(insert=False, select=True, delete=False)
+        fake.rows[1] = {"answer": "이미 있음"}
+        results = guard.probe("https://x.supabase.co", "anon", rules, http=fake)
+        self.assertEqual([(r.action, r.ok) for r in results],
+                         [("insert", True), ("select", True), ("delete", True)])
+        delete_result = next(r for r in results if r.action == "delete")
+        self.assertEqual(delete_result.observed, "unknown")
+        self.assertIn("지울 줄이 없어서", delete_result.note)
+
+    def test_unverifiable_allowed_delete_still_fails(self):
+        """Rules claiming delete is allowed still can't be waved through unverified."""
+        rules = {"version": 1, "tables": {"items": {
+            "anon": {"insert": False, "select": True, "delete": True},
+            "probe_row": {"answer": "확인용"}}}}
+        fake = FakeSupabase(insert=False, select=True, delete=False)
+        fake.rows[1] = {"answer": "이미 있음"}
+        results = guard.probe("https://x.supabase.co", "anon", rules, http=fake)
+        delete_result = next(r for r in results if r.action == "delete")
+        self.assertFalse(delete_result.ok)
+
 
 if __name__ == "__main__":
     unittest.main()

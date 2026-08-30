@@ -123,6 +123,13 @@ def probe(url: str, key: str, rules: dict[str, Any], http=None) -> list[ProbeRes
             if (control_ok and action == "delete" and observed["insert"] == "allow"
                     and observed["delete"] != "allow"):
                 note = "확인용 줄 하나가 저장소에 남았어요 — 나중에 대시보드에서 지우면 돼요"
+            elif (control_ok and action == "delete" and observed["insert"] != "allow"
+                    and want["delete"] == "deny"):
+                # No probe row could be created (insert is denied by design), so delete
+                # can't be exercised directly. That is not a contradiction of the rules —
+                # a deny-by-default reads as consistent, not as a leftover "unknown".
+                ok = True
+                note = "지울 줄이 없어서 직접 확인은 못 했어요 — 규칙에 지우기 허용이 없으니 막힌 것으로 봐요"
             results.append(ProbeResult(table, action, want[action], obs, ok, note))
     return results
 
