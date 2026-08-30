@@ -41,7 +41,7 @@ def stop(root: Path) -> bool:
     state = root / STATE
     if not state.is_file():
         return False
-    pid = json.loads(state.read_text(encoding="utf-8"))["pid"]
+    pid = json.loads(state.read_text(encoding="utf-8-sig"))["pid"]
     try:
         if sys.platform == "win32":
             subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)

@@ -60,6 +60,16 @@ class StartStopTest(unittest.TestCase):
             with self.assertRaises(Exception):
                 urllib.request.urlopen(url, timeout=1)
 
+    def test_stop_accepts_bom_state_file_from_powershell(self):
+        with tempfile.TemporaryDirectory() as d:
+            state = Path(d, ".bwm"); state.mkdir()
+            # a PID that does not exist: stop must still parse the file and remove it
+            (state / "serve.json").write_text(json.dumps({"port": 1, "pid": 999999}), encoding="utf-8-sig")
+            out = subprocess.run([sys.executable, str(REPO_ROOT / "scripts/serve.py"), "stop", d],
+                                 capture_output=True, text=True, encoding="utf-8").stdout
+            self.assertIn("STOPPED", out)
+            self.assertFalse((state / "serve.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
