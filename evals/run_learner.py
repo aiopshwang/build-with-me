@@ -46,11 +46,27 @@ def events(stream: str):
 
 
 def final_response(stream: str) -> str:
+    """The agent's last word for the turn.
+
+    Normally the ``result`` event's text. Claude Code can end a turn on a tool call
+    (e.g. an Edit) with an empty ``result``, even though the agent spoke earlier in the
+    turn — in that case, fall back to the assistant text blocks of the stream, joined
+    with blank lines, so the run isn't mistaken for an empty response.
+    """
     final = ""
     for ev in events(stream):
         if ev.get("type") == "result" and isinstance(ev.get("result"), str):
             final = ev["result"]
-    return final
+    if final:
+        return final
+    texts = []
+    for ev in events(stream):
+        if ev.get("type") != "assistant":
+            continue
+        for block in ev.get("message", {}).get("content", []):
+            if block.get("type") == "text":
+                texts.append(block.get("text", ""))
+    return "\n\n".join(texts)
 
 
 def session_id(stream: str) -> str | None:

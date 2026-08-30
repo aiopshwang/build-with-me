@@ -52,6 +52,22 @@ class ParseTest(unittest.TestCase):
         self.assertIn("공개 키: k", facts)
         self.assertIn("됐어요", facts)
 
+    def test_final_response_prefers_result(self):
+        stream = "\n".join([
+            json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "text", "text": "지금 뭐가 보여요?"}]}}),
+            json.dumps({"type": "result", "result": "끝"}),
+        ])
+        self.assertEqual(run_learner.final_response(stream), "끝")
+
+    def test_final_response_falls_back_to_text_blocks(self):
+        stream = "\n".join([
+            json.dumps({"type": "assistant", "message": {"content": [
+                {"type": "text", "text": "브라우저에서 새로고침해보세요 … 지금 뭐가 보여요?"}]}}),
+            json.dumps({"type": "result", "result": ""}),
+        ])
+        self.assertEqual(run_learner.final_response(stream), "브라우저에서 새로고침해보세요 … 지금 뭐가 보여요?")
+
     def test_storage_facts_missing_env_exits_2(self):
         import io, contextlib
         buf = io.StringIO()
