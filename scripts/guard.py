@@ -132,6 +132,47 @@ def scan_dir(root: Path) -> list[Finding]:
     return findings
 
 
+AGENT_PREFIX = "bwm: "
+
+
+def _git(repo: Path, *args: str) -> str:
+    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True,
+                         encoding="utf-8", errors="replace", check=False)
+    return out.stdout if out.returncode == 0 else ""
+
+
+def human_edits(repo: Path) -> list[str]:
+    files: set[str] = set()
+    for line in _git(repo, "status", "--porcelain").splitlines():
+        if len(line) > 3:
+            files.add(line[3:].strip().strip('"').split(" -> ")[-1])
+    log = _git(repo, "log", "--format=%H%x1f%s")
+    last_agent = None
+    for entry in log.splitlines():
+        sha, _, subject = entry.partition("\x1f")
+        if subject.startswith(AGENT_PREFIX):
+            last_agent = sha
+            break
+    if last_agent:
+        for name in _git(repo, "diff", "--name-only", f"{last_agent}..HEAD").splitlines():
+            if name.strip():
+                files.add(name.strip())
+    return sorted(files)
+
+
+def cmd_human_edits(args: argparse.Namespace) -> int:
+    files = human_edits(Path(args.dir).resolve())
+    if args.json:
+        print(json.dumps(files, ensure_ascii=False))
+    elif files:
+        print("당신이 직접 손본 파일이 있어요 — 이 파일들은 통째로 다시 만들지 않고 필요한 줄만 고칠게요:")
+        for f in files:
+            print(f"- {f}")
+    else:
+        print("직접 손본 파일은 없어요.")
+    return 0
+
+
 def cmd_pre_share(args: argparse.Namespace) -> int:
     root = Path(args.dir).resolve()
     if not root.is_dir():
@@ -178,6 +219,7 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_pre_share)
     p = sub.add_parser("probe"); p.add_argument("url"); p.add_argument("key"); p.add_argument("rules")
     p.add_argument("--json", action="store_true"); p.set_defaults(func=cmd_probe)
+    p = sub.add_parser("human-edits"); p.add_argument("dir", nargs="?", default="."); p.add_argument("--json", action="store_true"); p.set_defaults(func=cmd_human_edits)
     args = parser.parse_args(argv)
     return args.func(args)
 
