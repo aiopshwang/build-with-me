@@ -164,6 +164,7 @@ The matrix is 12 runs: 10 on Claude (five scenario × persona pairs, each run on
 
 - Claude 10: [evals/results/2026-08-30-first-validation.md](evals/results/2026-08-30-first-validation.md)
 - Codex 2: [evals/results/2026-08-30-codex.md](evals/results/2026-08-30-codex.md)
+- Name-mention trigger (v0.2.0): [evals/results/2026-08-31-name-trigger.md](evals/results/2026-08-31-name-trigger.md)
 - Rows and thresholds, counts only: [evals/rubric.json](evals/rubric.json) · fixtures and matrix: [evals/README.md](evals/README.md)
 
 ## Scope, versioning, feedback, license

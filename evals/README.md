@@ -23,6 +23,8 @@ Task 14의 러너가 읽는 픽스처: [`personas/`](personas/)의 학습자 3�
 
 Claude 10런(RED 5 + GREEN 5) + Codex GREEN 2런 (총 12런). 판정 기준은 설계 스펙의 Success Criteria 표를 그대로 쓴다 — 이 README는 그 표를 다시 정의하지 않는다.
 
+매트릭스 밖 변형 런 2종: [`quote-called`](scenarios/quote-called.md)(호출 문구 백업 경로, [첫 검증 결과](results/2026-08-30-first-validation.md)의 Table A)와 [`quote-named`](scenarios/quote-named.md)(v0.2.0 이름 언급 트리거, [결과](results/2026-08-31-name-trigger.md)).
+
 ## 실행
 
 ```bash

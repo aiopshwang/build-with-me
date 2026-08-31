@@ -164,6 +164,7 @@ python evals/count.py <rep-dir>
 
 - Claude 10런: [evals/results/2026-08-30-first-validation.md](evals/results/2026-08-30-first-validation.md)
 - Codex 2런: [evals/results/2026-08-30-codex.md](evals/results/2026-08-30-codex.md)
+- 이름 언급 트리거(v0.2.0): [evals/results/2026-08-31-name-trigger.md](evals/results/2026-08-31-name-trigger.md)
 - 행과 기준값(카운트만): [evals/rubric.json](evals/rubric.json) · 픽스처와 매트릭스: [evals/README.md](evals/README.md)
 
 ## 범위, 버전, 피드백, 라이선스
