@@ -4,6 +4,7 @@
 
 - Record files renamed: `진행.md` → `PROGRESS.md`, `지도.md` → `MAP.md`, `내-말로.md` → `MY-WORDS.md` (Korean filenames caused encoding/tooling trouble; spoken names in conversation stay Korean). Template stamp is now `build-with-me v0.2`.
 - On resume, the skill quietly renames old-named files to the new names, so existing folders keep working — records are never discarded.
+- Trigger widened — the description now matches the skill being named in any phrasing (e.g. `build with me 기반으로 개발 시작하자`); closes the measured gap where a first message without beginner cues did not auto-trigger.
 
 ## 0.1.0 — 2026-08-31
 

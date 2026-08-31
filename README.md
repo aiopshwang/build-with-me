@@ -141,7 +141,7 @@ Opening a browser is blocked inside the Codex sandbox, so the skill detects that
 
 **The install printed `Done!` and then nothing happened.** That is the expected state. The skill does nothing until you start `claude` or `codex` and say the call sentence.
 
-**It did not trigger.** Say the fallback line: `use the build-with-me skill`. In the first validation, 4 of the 5 scenarios triggered on the first message alone; all 5 triggered once the fallback line was added.
+**It did not trigger.** Mention the skill by name in any phrasing (`build with me 기반으로 개발 시작하자` works), or say the fallback line: `use the build-with-me skill`. In the first validation, 4 of the 5 scenarios triggered on the first message alone; all 5 triggered once the fallback line was added.
 
 **The browser did not open.** The agent prints the address instead and asks you to open it — `http://127.0.0.1:<port>`, where the port is recorded in `.bwm/serve.json`.
 

@@ -1,6 +1,6 @@
 ---
 name: build-with-me
-description: Use when someone says they cannot code, this is their first time, they want to build something to show people, or they ask to continue what they did last time — a tutor that takes a non-coder from one sentence to a local page in minutes, then a shareable link, teaching only at friction points. 코딩 몰라요 · 처음이에요 · 만들고 싶어요 · 어제 하던 거 이어서. Do not use for developers who want code explained line by line, or for code review.
+description: Use when someone says they cannot code, this is their first time, they want to build something to show people, or they ask to continue what they did last time, or they mention build-with-me by name in any phrasing (e.g. 'build with me 기반으로 개발 시작하자') — a tutor that takes a non-coder from one sentence to a local page in minutes, then a shareable link, teaching only at friction points. 코딩 몰라요 · 처음이에요 · 만들고 싶어요 · 어제 하던 거 이어서 · build with me로 시작. Do not use for developers who want code explained line by line, or for code review.
 license: MIT
 metadata:
   author: aiopshwang
