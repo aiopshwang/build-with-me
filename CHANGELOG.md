@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 — 2026-08-31
+
+- Record files renamed: `진행.md` → `PROGRESS.md`, `지도.md` → `MAP.md`, `내-말로.md` → `MY-WORDS.md` (Korean filenames caused encoding/tooling trouble; spoken names in conversation stay Korean). Template stamp is now `build-with-me v0.2`.
+- On resume, the skill quietly renames old-named files to the new names, so existing folders keep working — records are never discarded.
+
 ## 0.1.0 — 2026-08-31
 
 - Skeleton, validator with SKILL.md word budget.

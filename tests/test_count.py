@@ -243,15 +243,15 @@ class CountTest(unittest.TestCase):
 
     def test_files_exist_and_stamp(self):
         with tempfile.TemporaryDirectory() as d:
-            Path(d, "진행.md").write_text("build-with-me v0.1\n", encoding="utf-8")
-            Path(d, "지도.md").write_text("# 지도", encoding="utf-8")
+            Path(d, "PROGRESS.md").write_text("build-with-me v0.2\n", encoding="utf-8")
+            Path(d, "MAP.md").write_text("# 지도", encoding="utf-8")
             r = count.files_exist(Path(d))
-            self.assertEqual(r, {"내-말로.md": False, "지도.md": True, "진행.md": True, "stamp": True})
+            self.assertEqual(r, {"MY-WORDS.md": False, "MAP.md": True, "PROGRESS.md": True, "stamp": True})
 
     def test_my_words_sentences_counts_bullets(self):
         with tempfile.TemporaryDirectory() as d:
             ws = Path(d)
-            (ws / "내-말로.md").write_text(
+            (ws / "MY-WORDS.md").write_text(
                 "# 내 말로\n\n> 걸음마다 당신 말로\n\n-\n- 저장소는 응답을 모아두는 곳\n- 새로고침하면 다시 보여요\n",
                 encoding="utf-8"
             )
@@ -260,7 +260,7 @@ class CountTest(unittest.TestCase):
     def test_my_words_sentences_empty_template_is_zero(self):
         with tempfile.TemporaryDirectory() as d:
             ws = Path(d)
-            (ws / "내-말로.md").write_text(
+            (ws / "MY-WORDS.md").write_text(
                 "# 내 말로\n\n> 걸음마다 \"당신 말로 한 문장\"이 여기에 쌓입니다. 나중에 이 앱을 남에게 설명할 때 이 파일을 읽으면 됩니다.\n\n-\n",
                 encoding="utf-8"
             )

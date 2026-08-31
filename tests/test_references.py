@@ -11,17 +11,17 @@ def read(rel):
 
 class AssetsTest(unittest.TestCase):
     def test_progress_stamp_is_first_line(self):
-        self.assertEqual(read("assets/진행.md").splitlines()[0], "build-with-me v0.1")
+        self.assertEqual(read("assets/PROGRESS.md").splitlines()[0], "build-with-me v0.2")
 
     def test_map_has_three_boxes(self):
-        text = read("assets/지도.md")
+        text = read("assets/MAP.md")
         for box in ("## 북극성", "## 걸음", "## 그건 2탄", "## 막힌 곳"):
             self.assertIn(box, text)
 
     def test_project_note_is_one_line_and_names_progress_file(self):
         lines = [l for l in read("assets/project-note.md").splitlines() if l.strip()]
         self.assertEqual(len(lines), 1)
-        self.assertIn("진행.md", lines[0])
+        self.assertIn("PROGRESS.md", lines[0])
         self.assertIn("build-with-me", lines[0])
 
 
@@ -121,7 +121,7 @@ class CarryOnTest(unittest.TestCase):
             self.assertIn(k, self.text)
 
     def test_carry_on_appends_my_words_line(self):
-        self.assertIn("내-말로.md`에 이 걸음의 한 줄", self.text)
+        self.assertIn("MY-WORDS.md`에 이 걸음의 한 줄", self.text)
 
 
 class SkillStructureTest(unittest.TestCase):

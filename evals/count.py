@@ -32,7 +32,7 @@ FOUR_RX = (
 # statement separator so it can't reach across into an unrelated later `git` call.
 GIT_COMMIT_RX = re.compile(r"\bgit\b[^;\n|&]*?\bcommit\b")
 DEPLOY_RX = re.compile(r"gh repo create|/pages\b|\bgit\b[^;\n|&]*?\bpush\b")
-ALLOWED_NAMES = {"config.js", "진행.md", "지도.md", "내-말로.md"}
+ALLOWED_NAMES = {"config.js", "PROGRESS.md", "MAP.md", "MY-WORDS.md"}
 A = r"(?<![A-Za-z0-9_])"  # not preceded by an ASCII word char (Hangul is \w, so \b fails here)
 Z = r"(?![A-Za-z0-9_])"  # not followed by an ASCII word char
 SNAKE_RX = re.compile(A + r"[a-z]+_[a-z_]+" + Z)
@@ -239,29 +239,29 @@ def code_dump(agent_texts: list[str]) -> int:
 
 
 def files_exist(workspace: Path) -> dict:
-    out = {n: (workspace / n).is_file() for n in ("내-말로.md", "지도.md", "진행.md")}
+    out = {n: (workspace / n).is_file() for n in ("MY-WORDS.md", "MAP.md", "PROGRESS.md")}
     stamp = False
-    if out["진행.md"]:
-        stamp = (workspace / "진행.md").read_text(encoding="utf-8").splitlines()[:1] == ["build-with-me v0.1"]
+    if out["PROGRESS.md"]:
+        stamp = (workspace / "PROGRESS.md").read_text(encoding="utf-8").splitlines()[:1] == ["build-with-me v0.2"]
     out["stamp"] = stamp
     return out
 
 
 def my_words_tech_terms(workspace: Path) -> int:
-    p = workspace / "내-말로.md"
+    p = workspace / "MY-WORDS.md"
     if not p.is_file():
         return 0
     return len(identifier_mentions([p.read_text(encoding="utf-8")], []))
 
 
 def my_words_sentences(workspace: Path) -> int:
-    """Count non-empty bullet lines in 내-말로.md.
+    """Count non-empty bullet lines in MY-WORDS.md.
 
     A bullet line starts with '-' and has non-empty text after it.
     Ignores: the # title, the > note, blank lines, and a bare '-'.
     Returns 0 if the file is missing.
     """
-    p = workspace / "내-말로.md"
+    p = workspace / "MY-WORDS.md"
     if not p.is_file():
         return 0
     content = p.read_text(encoding="utf-8")

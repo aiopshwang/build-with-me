@@ -8,5 +8,5 @@
 4. **Call it.** Start `claude` or `codex` and type: `I can't code. I want to build something.` (fallback: `use the build-with-me skill`)
 5. **First sentence example.** "I want to see the stock list I type into Excel every week as a screen."
 6. **Things you can build.** A map of our shop · a stock table · a survey page · a booking form · a quote calculator.
-7. **Stuck?** Send `진행.md` and `지도.md` to your instructor. They contain no keys.
+7. **Stuck?** Send `PROGRESS.md` and `MAP.md` to your instructor. They contain no keys.
 8. **Update.** Run the step-2 command again.

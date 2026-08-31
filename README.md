@@ -54,7 +54,7 @@ The golden path, one line per step:
 2. **One sentence from you.** The opening line is reassurance, not a form; if you have no idea, it offers examples instead of a question. You see: exactly one question asked before anything appears on screen.
 3. **A placeholder screen in 90 seconds.** The moment it hears your sentence it writes a single `index.html`, starts the preview server, and opens it. You see: a page in your browser with your title on it and the line "this is just holding the spot".
 4. **A north star in one line.** The agent writes the line first — who opens it, what they see, what happens when they do something — and you only correct the wrong parts. You see: one sentence describing your app that you agreed to.
-5. **A map of steps.** It works backwards from the result to the input, then flips the order; anything out of range is written down under "that's part 2" instead of being argued about. You see: a checklist in `지도.md`.
+5. **A map of steps.** It works backwards from the result to the input, then flips the order; anything out of range is written down under "that's part 2" instead of being argued about. You see: a checklist in `MAP.md`.
 6. **One visible step at a time.** A step is not finished until something new is on the screen, and it does not move on before you see it. You see: one new thing on the page after every step.
 7. **One real feature, end to end.** Storage (Supabase) is brought in only when the answer to "where does what I typed have to stay?" is that it must be saved; the access rule is agreed in plain words first. You see: your own data on your own page.
 8. **The gate, then the link.** A GitHub account is handed to you only when it is needed, the four questions are answered, then it deploys. You see: a public address that did not exist before those four answers.
@@ -94,22 +94,22 @@ Across the first validation's 10 runs (Claude, RED 5 / GREEN 5), the 5 runs with
 
 | What | Why it is there |
 | --- | --- |
-| `진행.md` | Progress. Two lines at the end of every step: what is done, what is next. This is the file read first when work resumes. |
-| `지도.md` | The map: the north star, the list of steps with checkmarks, "that's part 2", and the spots where you got stuck twice. |
-| `내-말로.md` | One sentence per step in the learner's own words. No step is left blank — it is what you read later to explain the app to someone else. |
+| `PROGRESS.md` | Progress. Two lines at the end of every step: what is done, what is next. This is the file read first when work resumes. |
+| `MAP.md` | The map: the north star, the list of steps with checkmarks, "that's part 2", and the spots where you got stuck twice. |
+| `MY-WORDS.md` | One sentence per step in the learner's own words. No step is left blank — it is what you read later to explain the app to someone else. |
 | `index.html` | The page itself. `config.js` and `access-rules.json` appear beside it only when something has to be saved. |
 | `.bwm/` | Preview-server state (the port it is listening on). Git-ignored, along with `archive/` and `.env` files. |
-| `CLAUDE.md` / `AGENTS.md` | One appended line telling the next session to read `진행.md` first and say where you left off. |
+| `CLAUDE.md` / `AGENTS.md` | One appended line telling the next session to read `PROGRESS.md` first and say where you left off. |
 
-`진행.md`, `지도.md` and `내-말로.md` contain no keys — that is why the start sheet tells a stuck learner to send the first two straight to an instructor. Templates: [`assets/`](skills/build-with-me/assets/).
+`PROGRESS.md`, `MAP.md` and `MY-WORDS.md` contain no keys — that is why the start sheet tells a stuck learner to send the first two straight to an instructor. Templates: [`assets/`](skills/build-with-me/assets/).
 
 ## Picking up where you left off
 
 The method is that the recording is made **visible**. At the end of every step the agent writes the two lines and says out loud why it is writing them ("this matters, so I am noting where we got to — next time I read this first"). Git commits stay invisible; the record does not.
 
-At a new session, and immediately after the agent's context is compacted, its first action is to read `진행.md` and say "last time we got to …, next is …". The one line appended to `CLAUDE.md` / `AGENTS.md` is what makes it do that, so the learner never has to notice that context was lost.
+At a new session, and immediately after the agent's context is compacted, its first action is to read `PROGRESS.md` and say "last time we got to …, next is …". The one line appended to `CLAUDE.md` / `AGENTS.md` is what makes it do that, so the learner never has to notice that context was lost.
 
-When stuck, sending `진행.md` and `지도.md` to an instructor is the escape hatch — the same two files `guard.py pre-share` scans. Source: [`carry-on.md`](skills/build-with-me/references/carry-on.md).
+When stuck, sending `PROGRESS.md` and `MAP.md` to an instructor is the escape hatch — the same two files `guard.py pre-share` scans. Source: [`carry-on.md`](skills/build-with-me/references/carry-on.md).
 
 ## Before anything goes public
 
@@ -145,7 +145,7 @@ Opening a browser is blocked inside the Codex sandbox, so the skill detects that
 
 **The browser did not open.** The agent prints the address instead and asks you to open it — `http://127.0.0.1:<port>`, where the port is recorded in `.bwm/serve.json`.
 
-**The deploy failed.** The agent retries once silently, then explains in three lines: what happened, why, what it will do. After a second failure it closes the session with "let's finish the version that works on my computer today" and writes the retry point into `진행.md`.
+**The deploy failed.** The agent retries once silently, then explains in three lines: what happened, why, what it will do. After a second failure it closes the session with "let's finish the version that works on my computer today" and writes the retry point into `PROGRESS.md`.
 
 **Take the link down.** Say `내려줘` / "take it down". The agent deletes or unpublishes the repository and the address stops answering a few minutes later.
 
@@ -170,7 +170,7 @@ The matrix is 12 runs: 10 on Claude (five scenario × persona pairs, each run on
 
 Measured on Windows 11, with Claude Code and Codex as the calling agents. Hosting target: GitHub Pages. Storage target: Supabase. On macOS, only the browser-open command has been checked by inspection; a full macOS run has not been done.
 
-**Versioning.** Current version 0.1.0; what changed is in [CHANGELOG.md](CHANGELOG.md).
+**Versioning.** Current version 0.2.0; what changed is in [CHANGELOG.md](CHANGELOG.md).
 
 **Feedback.** Open an issue: <https://github.com/aiopshwang/build-with-me/issues>
 
